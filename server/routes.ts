@@ -28,32 +28,36 @@ from TTS.config import load_config
 import json
 import sys
 
-# Load voice configuration
-with open('${CYN_VOICE_CONFIG}', 'r') as f:
-    config = json.load(f)
+# Force CPU mode
+torch.set_grad_enabled(False)
+device = torch.device('cpu')
 
-# Initialize TTS with pretrained model for now
-model_manager = ModelManager()
-model_path, config_path, model_item = model_manager.download_model("tts_models/en/ljspeech/tacotron2-DDC")
-voc_path, voc_config_path, _ = model_manager.download_model("vocoder_models/en/ljspeech/hifigan_v2")
+try:
+    # Initialize TTS with pretrained model for now
+    model_manager = ModelManager()
+    model_path, config_path, model_item = model_manager.download_model("tts_models/en/ljspeech/tacotron2-DDC")
+    voc_path, voc_config_path, _ = model_manager.download_model("vocoder_models/en/ljspeech/hifigan_v2")
 
-# Create synthesizer
-synthesizer = Synthesizer(
-    model_path,
-    config_path,
-    None,
-    None,
-    vocoder_path=voc_path,
-    vocoder_config_path=voc_config_path,
-    use_cuda=torch.cuda.is_available()
-)
+    # Create synthesizer with explicit CPU device
+    synthesizer = Synthesizer(
+        model_path,
+        config_path,
+        None,
+        None,
+        vocoder_path=voc_path,
+        vocoder_config_path=voc_config_path,
+        use_cuda=False
+    )
 
-# Synthesize speech
-wav = synthesizer.tts("${text}")
+    # Synthesize speech
+    wav = synthesizer.tts("${text}")
 
-# Convert to 16-bit PCM WAV
-wav = np.int16(wav * 32767)
-sys.stdout.buffer.write(wav.tobytes())
+    # Convert to 16-bit PCM WAV
+    wav = np.int16(wav * 32767)
+    sys.stdout.buffer.write(wav.tobytes())
+except Exception as e:
+    print(f"TTS Error: {str(e)}", file=sys.stderr)
+    sys.exit(1)
       `
     ]);
 
@@ -897,6 +901,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       });    }
   });
 
-  app.use(router);
+app.use(router);
   return app.listen();
 }
