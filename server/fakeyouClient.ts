@@ -16,8 +16,18 @@ interface TtsStatusResult {
   error?: string;
 }
 
+interface FakeYouResponse {
+  success: boolean;
+  inference_job_token?: string;
+  state?: {
+    status: 'pending' | 'complete' | 'error';
+    maybe_public_bucket_wav_audio_path?: string;
+  };
+  error?: string;
+}
+
 class FakeYouClient {
-  private async makeRequest(endpoint: string, method: string = 'GET', body?: any) {
+  private async makeRequest(endpoint: string, method: string = 'GET', body?: any): Promise<FakeYouResponse> {
     try {
       const response = await fetch(`${FAKEYOU_API_BASE}${endpoint}`, {
         method,
@@ -31,25 +41,25 @@ class FakeYouClient {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json() as FakeYouResponse;
+      return data;
     } catch (error) {
       console.error('FakeYou API error:', error);
       throw error;
     }
   }
 
-  async convertSpeechToSpeech(audioBlob: Blob): Promise<TtsRequestResult> {
+  async convertSpeechToSpeech(audioBlob: Buffer): Promise<TtsRequestResult> {
     try {
-      // Convert blob to base64
-      const buffer = await audioBlob.arrayBuffer();
-      const base64Audio = Buffer.from(buffer).toString('base64');
+      // Convert buffer to base64
+      const base64Audio = audioBlob.toString('base64');
 
       const response = await this.makeRequest('/tts/voice-conversion', 'POST', {
         tts_model_token: FAKEYOU_MODEL_TOKEN,
         audio_base64: base64Audio,
       });
 
-      if (response.success) {
+      if (response.success && response.inference_job_token) {
         return {
           success: true,
           inference_job_token: response.inference_job_token,
@@ -72,7 +82,7 @@ class FakeYouClient {
     try {
       const response = await this.makeRequest(`/tts/job/${jobToken}`);
 
-      if (response.success) {
+      if (response.success && response.state) {
         return {
           success: true,
           status: response.state.status,
