@@ -534,7 +534,7 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
-  // Update voice synthesis endpoint
+  // Update voice synthesis endpoint to better match Cyn's characteristics
   router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
@@ -548,18 +548,57 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
 
       console.log(`Processing TTS request with text: "${text}"`);
 
-      // Return response indicating to use browser's Web Speech API
+      // Load Cyn's personality data to determine voice characteristics
+      const cynTrainingDataPath = path.join(__dirname, "..", "cyn-training-data.json");
+      let emotionalTone = 'neutral';
+
+      try {
+        const dataRaw = await fs.readFile(cynTrainingDataPath, 'utf-8');
+        const cynData = JSON.parse(dataRaw);
+
+        // Analyze text for emotional markers
+        const isPlayful = text.includes('[giggles]') || text.includes('[grins]') || text.includes('*playful*');
+        const isMenacing = text.includes('[ominous]') || text.includes('*menacing*') || text.toLowerCase().includes('destroy');
+        const isMocking = text.includes('[mock') || text.toLowerCase().includes('adorable') || text.includes('*sarcastic*');
+
+        // Adjust voice parameters based on content
+        if (isPlayful) {
+          emotionalTone = 'playful';
+        } else if (isMenacing) {
+          emotionalTone = 'menacing';
+        } else if (isMocking) {
+          emotionalTone = 'mocking';
+        }
+      } catch (err) {
+        console.warn("Could not load Cyn's training data, using default voice settings");
+      }
+
+      // Configure voice parameters to match Cyn's characteristics
+      const voiceParams = {
+        name: 'Microsoft Hazel - English (United Kingdom)', // Higher pitched, feminine voice
+        pitch: emotionalTone === 'playful' ? 1.4 : 
+               emotionalTone === 'menacing' ? 0.9 :
+               emotionalTone === 'mocking' ? 1.3 : 1.2,
+        rate: emotionalTone === 'playful' ? 1.2 :
+              emotionalTone === 'menacing' ? 0.9 :
+              emotionalTone === 'mocking' ? 1.15 : 1.1,
+        volume: 1.0,
+        // Add emotional characteristics
+        emotionalTone,
+        // Additional voice characteristics matching Cyn
+        voiceCharacteristics: {
+          accent: "British", // Cyn has a British-like accent
+          personality: "Chaotic, playful, menacing",
+          style: emotionalTone
+        }
+      };
+
       return res.json({
         success: true,
-        message: "Text processed successfully",
+        message: "Text processed successfully with Cyn's voice characteristics",
         text: text,
         useBrowserTTS: true,
-        voicePreferences: {
-          name: 'Google UK English Female', // Most similar to Cyn's voice
-          pitch: 1.2, // Slightly higher pitch for Cyn's character
-          rate: 1.1, // Slightly faster rate for energetic delivery
-          volume: 1.0
-        }
+        voicePreferences: voiceParams
       });
 
     } catch (error) {
