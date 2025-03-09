@@ -546,6 +546,37 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
+  // Update voice synthesis endpoint
+  router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
+    try {
+      const { text } = req.body;
+
+      if (!text) {
+        return res.status(400).json({
+          success: false,
+          error: "No text provided"
+        });
+      }
+
+      console.log(`Received synthesis request with text: "${text}"`);
+
+      // Return a response that tells the client to use browser-based TTS
+      return res.json({
+        success: true,
+        message: "Use browser-based TTS",
+        text: text,
+        useBrowserTTS: true
+      });
+
+    } catch (error) {
+      console.error("Error synthesizing speech:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to synthesize speech"
+      });
+    }
+  });
+
   // New endpoint to analyze and fix voice samples
   router.get("/api/tts/analyze", async (_req: Request, res: Response) => {
     try {
@@ -777,51 +808,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to train voice"
-      });
-    }
-  });
-
-  // Update voice synthesis endpoint to use existing Murder Drones API
-  router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
-    try {
-      const { text } = req.body;
-
-      if (!text) {
-        return res.status(400).json({
-          success: false,
-          error: "No text provided"
-        });
-      }
-
-      console.log(`Received synthesis request with text: "${text}"`);
-
-      // Call the Murder Drones TTS API
-      const response = await axios({
-        method: 'POST',
-        url: 'https://api.murderdrones.fans/v1/tts/cyn',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg'
-        },
-        data: {
-          text: text,
-          style: 'neutral' // Can be: neutral, happy, sad, angry based on context
-        },
-        responseType: 'arraybuffer'
-      });
-
-      // Set proper headers for audio
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Content-Length', response.data.length);
-
-      // Send the audio data
-      res.send(response.data);
-    } catch (error) {
-      console.error("Error synthesizing speech:", error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to synthesize speech"
       });
     }
   });
