@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { exec } from "child_process";
+import fileUpload from 'express-fileupload';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,12 @@ async function synthesizeSpeech(text: string): Promise<Buffer> {
 
 export async function registerRoutes(app: express.Express) {
   const router = Router();
+
+  // Initialize file upload middleware
+  app.use(fileUpload({
+    useTempFiles: true,
+    tempFileDir: path.join(__dirname, '..', 'temp')
+  }));
 
   // Get all messages
   router.get("/api/messages", async (_req: Request, res: Response) => {
