@@ -33,6 +33,7 @@ class FakeYouClient {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: body ? JSON.stringify(body) : undefined,
       });
