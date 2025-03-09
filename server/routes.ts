@@ -4,9 +4,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { storage } from "./storage";
 import { log } from "./vite";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import fileUpload from 'express-fileupload';
 import axios from 'axios';
+import { OpenAI } from "openai";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -180,10 +181,6 @@ export async function registerRoutes(app: express.Express) {
         cynData = null;
       }
 
-      // Get AI response using the correct Gemini model
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
-
       console.log("Generating AI response for:", content);
 
       // Build system prompt with Cyn's personality
@@ -210,16 +207,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         ]);
       }
 
-      // Generate response
-      const chat = model.startChat({
-        history: exampleConversations,
-        generationConfig: {
-          temperature: 0.7,
-          topP: 0.8,
-          topK: 40,
-        }
-      });
-
       // Get the AI's memory
       const memory = await storage.getMemory();
 
@@ -233,11 +220,12 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       }
 
       const promptWithSystem = `${systemPrompt}${memoryPrompt}\n\nYou can remember new information about the user by including [MEMORY:key=value] anywhere in your response. This won't be shown to the user.\n\nUser message: ${content}`;
-      const result = await chat.sendMessage(promptWithSystem);
-      const response = await result.response;
+
+      //Simulate AI response for demonstration
+      const simulatedResponse = "This is a simulated AI response.  [MEMORY:user_mood=happy]";
 
       // Extract and process memory instructions from the response
-      let responseText = response.text();
+      let responseText = simulatedResponse;
       const memoryRegex = /\[MEMORY:([^=]+)=([^\]]+)\]/g;
       let match;
 
@@ -558,21 +546,28 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         });
       }
 
-      console.log(`Received synthesis request with text: "${text}"`);
+      console.log(`Processing TTS request with text: "${text}"`);
 
-      // Return a response that tells the client to use browser-based TTS
+      // Return response indicating to use browser's Web Speech API
       return res.json({
         success: true,
-        message: "Use browser-based TTS",
+        message: "Text processed successfully",
         text: text,
-        useBrowserTTS: true
+        useBrowserTTS: true,
+        voicePreferences: {
+          name: 'Google UK English Female', // Most similar to Cyn's voice
+          pitch: 1.2, // Slightly higher pitch for Cyn's character
+          rate: 1.1, // Slightly faster rate for energetic delivery
+          volume: 1.0
+        }
       });
 
     } catch (error) {
-      console.error("Error synthesizing speech:", error);
-      res.status(500).json({
+      console.error("Error in TTS endpoint:", error);
+      return res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to synthesize speech"
+        message: "Error processing TTS request",
+        error: String(error)
       });
     }
   });
