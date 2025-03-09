@@ -857,6 +857,41 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
+  // Add this endpoint after other /api/voice endpoints
+
+  // Upload and process voice samples
+  router.post("/api/voice/samples/upload", async (req: Request, res: Response) => {
+    try {
+      if (!req.files || !req.files.samples) {
+        return res.status(400).json({
+          success: false,
+          error: "No voice samples provided"
+        });
+      }
+
+      const { setupVoiceSamples } = await import('./audio-converter');
+
+      // Handle single or multiple files
+      const samples = Array.isArray(req.files.samples) ? req.files.samples : [req.files.samples];
+      const samplePaths = samples.map((file: any) => file.tempFilePath);
+
+      // Process the samples
+      const processedFiles = await setupVoiceSamples(samplePaths);
+
+      res.json({
+        success: true,
+        message: "Voice samples processed successfully",
+        files: processedFiles
+      });
+    } catch (error) {
+      console.error("Error processing voice samples:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to process voice samples"
+      });
+    }
+  });
+
   app.use(router);
   return app.listen();
 }
