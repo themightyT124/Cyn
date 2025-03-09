@@ -1,19 +1,75 @@
 import express, { Request, Response, Router } from "express";
-import { nanoid } from "nanoid";
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { storage } from "./storage";
 import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { voiceTrainer } from './marytts/voice-trainer';
-import { VoiceTrainingConfig } from './marytts/config/voice-config';
+import { spawn } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Define training data directory
+// TTS configuration
 const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
+const CYN_VOICE_CONFIG = path.join(__dirname, '..', 'cyn-voice-training-data.json');
+
+// Voice synthesis function using Coqui TTS
+async function synthesizeSpeech(text: string, voiceId: string = 'cyn_voice'): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const pythonProcess = spawn('python3', [
+      '-c',
+      `
+import torch
+import numpy as np
+from TTS.utils.manage import ModelManager
+from TTS.utils.synthesizer import Synthesizer
+from TTS.config import load_config
+import json
+import sys
+
+# Load voice configuration
+with open('${CYN_VOICE_CONFIG}', 'r') as f:
+    config = json.load(f)
+
+# Initialize TTS with pretrained model for now
+model_manager = ModelManager()
+model_path, config_path, model_item = model_manager.download_model("tts_models/en/ljspeech/tacotron2-DDC")
+voc_path, voc_config_path, _ = model_manager.download_model("vocoder_models/en/ljspeech/hifigan_v2")
+
+# Create synthesizer
+synthesizer = Synthesizer(
+    model_path,
+    config_path,
+    None,
+    None,
+    vocoder_path=voc_path,
+    vocoder_config_path=voc_config_path,
+    use_cuda=torch.cuda.is_available()
+)
+
+# Synthesize speech
+wav = synthesizer.tts("${text}")
+
+# Convert to 16-bit PCM WAV
+wav = np.int16(wav * 32767)
+sys.stdout.buffer.write(wav.tobytes())
+      `
+    ]);
+
+    const chunks: Buffer[] = [];
+    pythonProcess.stdout.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    pythonProcess.stderr.on('data', (data) => console.error(`TTS Error: ${data}`));
+
+    pythonProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve(Buffer.concat(chunks));
+      } else {
+        reject(new Error(`TTS process exited with code ${code}`));
+      }
+    });
+  });
+}
 
 export async function registerRoutes(app: express.Express) {
   const router = Router();
@@ -777,10 +833,9 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
-  // Synthesize speech using a trained voice
+  // Update voice synthesis endpoint
   router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
     try {
-      const { voiceId } = req.params;
       const { text } = req.body;
 
       if (!text) {
@@ -790,57 +845,17 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         });
       }
 
-      console.log(`Received synthesis request for voice ${voiceId} with text: "${text}"`);
+      console.log(`Received synthesis request with text: "${text}"`);
 
-      try {
-        // Try to synthesize with existing voice
-        const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+      const audioBuffer = await synthesizeSpeech(text);
 
-        // Set proper headers for WAV audio
-        res.setHeader('Content-Type', 'audio/wav');
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Content-Length', audioBuffer.length);
+      // Set proper headers for WAV audio
+      res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', audioBuffer.length);
 
-        // Send the audio data
-        res.send(audioBuffer);
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('not found')) {
-          console.log('Voice not found, creating default voice');
-          // Create a default voice if none exists
-          const defaultConfig = {
-            voiceId,
-            name: "Default Voice",
-            description: "Automatically created voice",
-            samplingRate: 22050,
-            frameSize: 1024,
-            hopSize: 256,
-            features: {
-              useMfcc: true,
-              useF0: true,
-              useProsody: true
-            },
-            epochs: 100,
-            batchSize: 32,
-            learningRate: 0.001
-          };
-
-          await voiceTrainer.createVoice(defaultConfig);
-          await voiceTrainer.trainVoice(voiceId);
-
-          // Try synthesis again with the new voice
-          const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
-
-          // Set proper headers for WAV audio
-          res.setHeader('Content-Type', 'audio/wav');
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('Content-Length', audioBuffer.length);
-
-          // Send the audio data
-          res.send(audioBuffer);
-        } else {
-          throw error;
-        }
-      }
+      // Send the audio data
+      res.send(audioBuffer);
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       res.status(500).json({
@@ -879,8 +894,7 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process voice samples"
-      });
-    }
+      });    }
   });
 
   app.use(router);

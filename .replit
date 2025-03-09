@@ -1,6 +1,6 @@
 
 audio = true
-modules = ["nodejs-20", "web", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "postgresql-16", "python-3.11", "python3"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -51,6 +51,10 @@ externalPort = 3003
 [[ports]]
 localPort = 41969
 externalPort = 6000
+
+[[ports]]
+localPort = 46669
+externalPort = 8008
 
 [[ports]]
 localPort = 46797

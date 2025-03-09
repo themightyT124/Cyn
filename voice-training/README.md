@@ -1,29 +1,23 @@
 # Voice Training System
 
-This directory contains the voice training system files and models.
+This directory contains the voice training system files and models using Coqui TTS.
 
 ## Directory Structure
 
 ```
 voice-training/
-├── voices/             # Voice configurations and metadata
-│   └── {voice_id}/
-│       └── config.json
-├── training-data/      # Training data for each voice
-│   └── {voice_id}/
-│       ├── audio1.wav
-│       └── audio2.wav
-└── models/             # Trained voice models
-    └── {voice_id}/
-        └── model.json
+├── models/             # Trained voice models
+│   └── cyn_voice/     # Default voice model
+├── training-data/      # Training data for voice
+│   └── voice-samples/ # Voice sample WAV files
+└── config.json        # Voice configuration
 ```
 
 ## Voice Training Process
 
-1. Create a new voice configuration
-2. Add training data (WAV files)
-3. Train the voice model
-4. Use the trained model for speech synthesis
+1. Place WAV files in the training-data/voice-samples directory
+2. Configuration is managed through cyn-voice-training-data.json
+3. Training process uses Coqui TTS for high-quality voice synthesis
 
 ## Requirements
 
