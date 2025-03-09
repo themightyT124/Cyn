@@ -5,8 +5,8 @@ import { fileURLToPath } from "url";
 import { storage } from "./storage";
 import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { exec } from "child_process";
 import fileUpload from 'express-fileupload';
+import axios from 'axios';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,25 +14,6 @@ const __dirname = path.dirname(__filename);
 // Define training data directory
 const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
 
-// Simple TTS function using node-gtts
-async function synthesizeSpeech(text: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const gTTS = require('node-gtts')('en');
-    const tmpFile = path.join(__dirname, '..', 'temp', `speech_${Date.now()}.mp3`);
-
-    // Ensure temp directory exists
-    fs.mkdir(path.dirname(tmpFile), { recursive: true }).then(() => {
-      gTTS.save(tmpFile, text, () => {
-        fs.readFile(tmpFile)
-          .then(data => {
-            fs.unlink(tmpFile).catch(console.error); // Cleanup
-            resolve(data);
-          })
-          .catch(reject);
-      });
-    }).catch(reject);
-  });
-}
 
 export async function registerRoutes(app: express.Express) {
   const router = Router();
@@ -800,7 +781,7 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
-  // Update voice synthesis endpoint to use simpler TTS
+  // Update voice synthesis endpoint to use existing Murder Drones API
   router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
@@ -814,15 +795,28 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
 
       console.log(`Received synthesis request with text: "${text}"`);
 
-      const audioBuffer = await synthesizeSpeech(text);
+      // Call the Murder Drones TTS API
+      const response = await axios({
+        method: 'POST',
+        url: 'https://api.murderdrones.fans/v1/tts/cyn',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg'
+        },
+        data: {
+          text: text,
+          style: 'neutral' // Can be: neutral, happy, sad, angry based on context
+        },
+        responseType: 'arraybuffer'
+      });
 
-      // Set proper headers for MP3 audio
+      // Set proper headers for audio
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Content-Length', audioBuffer.length);
+      res.setHeader('Content-Length', response.data.length);
 
       // Send the audio data
-      res.send(audioBuffer);
+      res.send(response.data);
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       res.status(500).json({
