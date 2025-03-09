@@ -11,10 +11,10 @@ export async function convertMp3ToWav(inputPath: string): Promise<string> {
   try {
     // Create output filename
     const outputPath = inputPath.replace('.mp3', '.wav');
-    
+
     // Use FFmpeg to convert MP3 to WAV
     execSync(`"${ffmpegPath}" -y -i "${inputPath}" -acodec pcm_s16le -ar 22050 "${outputPath}"`);
-    
+
     return outputPath;
   } catch (error) {
     console.error('Error converting MP3 to WAV:', error);
@@ -26,14 +26,14 @@ export async function processVoiceSample(inputPath: string, targetDir: string): 
   try {
     // Create target directory if it doesn't exist
     await fs.mkdir(targetDir, { recursive: true });
-    
+
     // Generate output path
     const filename = path.basename(inputPath);
     const outputPath = path.join(targetDir, filename);
-    
+
     // Copy file to target directory
     await fs.copyFile(inputPath, outputPath);
-    
+
     // If it's an MP3, convert it to WAV
     if (outputPath.toLowerCase().endsWith('.mp3')) {
       const wavPath = await convertMp3ToWav(outputPath);
@@ -41,7 +41,7 @@ export async function processVoiceSample(inputPath: string, targetDir: string): 
       await fs.unlink(outputPath);
       return wavPath;
     }
-    
+
     return outputPath;
   } catch (error) {
     console.error('Error processing voice sample:', error);
@@ -51,16 +51,39 @@ export async function processVoiceSample(inputPath: string, targetDir: string): 
 
 export async function setupVoiceSamples(sampleFiles: string[]): Promise<string[]> {
   const targetDir = path.join(__dirname, '..', 'training-data', 'voice-samples');
+  const mp3InputDir = path.join(targetDir, 'mp3-input');
   const processedFiles: string[] = [];
-  
+
+  try {
+    // Create mp3-input directory if it doesn't exist
+    await fs.mkdir(mp3InputDir, { recursive: true });
+  } catch (error) {
+    console.error('Error creating mp3-input directory:', error);
+  }
+
   for (const file of sampleFiles) {
     try {
-      const processedPath = await processVoiceSample(file, targetDir);
-      processedFiles.push(processedPath);
+      // Determine target directory based on file type
+      const isMP3 = file.toLowerCase().endsWith('.mp3');
+      const processTarget = isMP3 ? mp3InputDir : targetDir;
+
+      const processedPath = await processVoiceSample(file, processTarget);
+
+      // If it's an MP3, also convert it to WAV in the main directory
+      if (isMP3) {
+        const wavPath = await convertMp3ToWav(processedPath);
+        // Move the WAV file to the main training directory
+        const wavFilename = path.basename(wavPath);
+        const finalWavPath = path.join(targetDir, wavFilename);
+        await fs.rename(wavPath, finalWavPath);
+        processedFiles.push(finalWavPath);
+      } else {
+        processedFiles.push(processedPath);
+      }
     } catch (error) {
       console.error(`Failed to process ${file}:`, error);
     }
   }
-  
+
   return processedFiles;
 }

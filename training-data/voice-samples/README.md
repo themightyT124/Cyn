@@ -4,16 +4,24 @@ This directory contains the voice samples used for training the TTS system.
 
 ## Structure
 
-Place your WAV files directly in this directory using the following format:
+Place your audio files in the following format:
 ```
 training-data/voice-samples/
-  ├── sample1.wav
+  ├── mp3-input/        # Place your MP3 files here for conversion
+  ├── sample1.wav       # Converted/existing WAV files
   ├── sample2.wav
   └── sample3.wav
 ```
 
 ## Requirements
 
+### MP3 Files (Input)
+- Place MP3 files in the `mp3-input` directory
+- Files will be automatically converted to WAV format
+- Original MP3 files will be preserved
+- **Maximum file size: 10MB**
+
+### WAV Files (Training)
 - Files must be WAV format
 - Audio should be clear and high quality
 - Each file should contain a single voice
@@ -23,9 +31,14 @@ training-data/voice-samples/
 
 ## How to Add Voice Samples
 
-1. Create your WAV recordings (recommended: 44.1kHz, 16-bit)
-2. Name them descriptively (e.g., `voice_sample_1.wav`)
-3. Place the files directly in this directory
-4. The system will automatically detect and use these samples
+1. For MP3 files:
+   - Place MP3 files in the `mp3-input` directory
+   - Files will be automatically converted to WAV format
+   - Converted files will appear in the main directory
 
-Note: Ensure your audio files are properly formatted WAV files with headers. The system validates files before using them.
+2. For WAV files:
+   - Place WAV files directly in this directory
+   - Files should be 44.1kHz, 16-bit
+   - Name them descriptively (e.g., `voice_sample_1.wav`)
+
+Note: Ensure your audio files are properly formatted. The system validates files before using them.
