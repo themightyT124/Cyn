@@ -8,6 +8,8 @@ import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 // Import fakeyouClient -  You'll need to define this based on your FakeYou library
 import fakeyouClient from './fakeyouClient'; // Or wherever your client is defined
+import { voiceTrainer } from './marytts/voice-trainer';
+import { VoiceTrainingConfig } from './marytts/config/voice-config';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -146,8 +148,6 @@ export async function registerRoutes(app: express.Express) {
     }
   });
 
-
-  // Add these routes inside the registerRoutes function before app.use(router)
 
   // Speech-to-Speech conversion endpoint
   router.post("/api/speech-to-speech", async (req: Request, res: Response) => {
@@ -760,6 +760,102 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
+  // Create a new voice
+  router.post("/api/voice/create", async (req: Request, res: Response) => {
+    try {
+      const config: Partial<VoiceTrainingConfig> = req.body;
+      const voiceId = await voiceTrainer.createVoice(config);
+
+      res.json({
+        success: true,
+        voiceId,
+        message: "Voice created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating voice:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create voice"
+      });
+    }
+  });
+
+  // Prepare training data for a voice
+  router.post("/api/voice/:voiceId/prepare", async (req: Request, res: Response) => {
+    try {
+      const { voiceId } = req.params;
+      const files = req.files as any;
+
+      if (!files || !files.audio) {
+        return res.status(400).json({
+          success: false,
+          error: "No audio files provided"
+        });
+      }
+
+      const audioFiles = Array.isArray(files.audio) ? files.audio : [files.audio];
+      const filePaths = audioFiles.map(file => file.tempFilePath);
+
+      await voiceTrainer.prepareTrainingData(voiceId, filePaths);
+
+      res.json({
+        success: true,
+        message: "Training data prepared successfully"
+      });
+    } catch (error) {
+      console.error("Error preparing training data:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to prepare training data"
+      });
+    }
+  });
+
+  // Train a voice model
+  router.post("/api/voice/:voiceId/train", async (req: Request, res: Response) => {
+    try {
+      const { voiceId } = req.params;
+
+      await voiceTrainer.trainVoice(voiceId);
+
+      res.json({
+        success: true,
+        message: "Voice training completed successfully"
+      });
+    } catch (error) {
+      console.error("Error training voice:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to train voice"
+      });
+    }
+  });
+
+  // Synthesize speech using a trained voice
+  router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
+    try {
+      const { voiceId } = req.params;
+      const { text } = req.body;
+
+      if (!text) {
+        return res.status(400).json({
+          success: false,
+          error: "No text provided"
+        });
+      }
+
+      const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+
+      res.setHeader('Content-Type', 'audio/wav');
+      res.send(audioBuffer);
+    } catch (error) {
+      console.error("Error synthesizing speech:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to synthesize speech"
+      });
+    }
+  });
 
   app.use(router);
   return app.listen();
