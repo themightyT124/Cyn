@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fakeyouClient } from "@/lib/fakeyou-client";
 
 interface TTSButtonProps {
   text: string;
@@ -25,48 +24,49 @@ export function TTSButton({ text, className }: TTSButtonProps) {
     setIsLoading(true);
 
     try {
-      // Request TTS generation
-      const ttsRequest = await fakeyouClient.requestTTS(text);
+      // Request speech synthesis from MaryTTS
+      const response = await fetch('/api/voice/synthesize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
 
-      if (!ttsRequest.success || !ttsRequest.inference_job_token) {
-        throw new Error(ttsRequest.error || 'Failed to start TTS generation');
+      if (!response.ok) {
+        throw new Error('Failed to synthesize speech');
       }
 
-      // Poll for completion
-      const checkStatus = async (jobToken: string) => {
-        const status = await fakeyouClient.getTTSStatus(jobToken);
+      // Get audio data as blob
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
 
-        if (status.success && status.status === 'complete' && status.audio_url) {
-          // Create and play audio
-          if (audioRef.current) {
-            audioRef.current.pause();
-          }
+      // Create and play audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+      }
 
-          const audio = new Audio(status.audio_url);
-          audioRef.current = audio;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
-          audio.onplay = () => setIsPlaying(true);
-          audio.onended = () => setIsPlaying(false);
-          audio.onerror = () => {
-            setIsPlaying(false);
-            toast({
-              title: "Playback Error",
-              description: "Failed to play the generated audio.",
-              variant: "destructive"
-            });
-          };
-
-          await audio.play();
-          setIsLoading(false);
-        } else if (status.status === 'pending') {
-          // Check again in 1 second
-          setTimeout(() => checkStatus(jobToken), 1000);
-        } else {
-          throw new Error(status.error || 'Failed to generate audio');
-        }
+      audio.onplay = () => setIsPlaying(true);
+      audio.onended = () => {
+        setIsPlaying(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      audio.onerror = () => {
+        setIsPlaying(false);
+        URL.revokeObjectURL(audioUrl);
+        toast({
+          title: "Playback Error",
+          description: "Failed to play the generated audio.",
+          variant: "destructive"
+        });
       };
 
-      await checkStatus(ttsRequest.inference_job_token);
+      await audio.play();
+      setIsLoading(false);
     } catch (error) {
       console.error("TTS error:", error);
       setIsLoading(false);

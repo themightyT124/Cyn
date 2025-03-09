@@ -6,11 +6,8 @@ import { fileURLToPath } from "url";
 import { storage } from "./storage";
 import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-// Import fakeyouClient -  You'll need to define this based on your FakeYou library
-import fakeyouClient from './fakeyouClient'; // Or wherever your client is defined
 import { voiceTrainer } from './marytts/voice-trainer';
 import { VoiceTrainingConfig } from './marytts/config/voice-config';
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -148,57 +145,6 @@ export async function registerRoutes(app: express.Express) {
     }
   });
 
-
-  // Speech-to-Speech conversion endpoint
-  router.post("/api/speech-to-speech", async (req: Request, res: Response) => {
-    try {
-      // Check if audio file is provided
-      if (!req.files || !req.files.audio) {
-        return res.status(400).json({
-          success: false,
-          error: "No audio file provided"
-        });
-      }
-
-      const audioFile = req.files.audio as any;
-
-      // Convert audio file to blob
-      const audioBlob = new Blob([audioFile.data], { type: audioFile.mimetype });
-
-      // Use FakeYou client for conversion
-      const conversionRequest = await fakeyouClient.convertSpeechToSpeech(audioBlob);
-
-      if (!conversionRequest.success || !conversionRequest.inference_job_token) {
-        throw new Error(conversionRequest.error || 'Failed to start voice conversion');
-      }
-
-      res.json({
-        success: true,
-        jobToken: conversionRequest.inference_job_token
-      });
-    } catch (error) {
-      console.error("Error in speech-to-speech conversion:", error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to convert speech"
-      });
-    }
-  });
-
-  // Check speech-to-speech conversion status
-  router.get("/api/speech-to-speech/:jobToken", async (req: Request, res: Response) => {
-    try {
-      const { jobToken } = req.params;
-      const status = await fakeyouClient.getTTSStatus(jobToken);
-      res.json(status);
-    } catch (error) {
-      console.error("Error checking conversion status:", error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to check conversion status"
-      });
-    }
-  });
 
   // Add a new message and get AI response
   router.post("/api/messages", async (req: Request, res: Response) => {
@@ -856,8 +802,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       });
     }
   });
-
-  // Add this endpoint after other /api/voice endpoints
 
   // Upload and process voice samples
   router.post("/api/voice/samples/upload", async (req: Request, res: Response) => {
