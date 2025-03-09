@@ -24,8 +24,11 @@ export function TTSButton({ text, className }: TTSButtonProps) {
     setIsLoading(true);
 
     try {
-      // Request speech synthesis from MaryTTS
-      const response = await fetch('/api/voice/synthesize', {
+      // Create a default voice ID if none exists
+      const voiceId = 'default-voice';
+
+      // Request speech synthesis from our custom TTS engine
+      const response = await fetch(`/api/voice/${voiceId}/synthesize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,28 +37,43 @@ export function TTSButton({ text, className }: TTSButtonProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to synthesize speech');
+        throw new Error(`Speech synthesis failed: ${response.statusText}`);
       }
 
       // Get audio data as blob
       const audioBlob = await response.blob();
+
+      // Verify the blob type
+      if (audioBlob.size === 0) {
+        throw new Error('Generated audio is empty');
+      }
+
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Create and play audio
+      // Clean up previous audio
       if (audioRef.current) {
         audioRef.current.pause();
         URL.revokeObjectURL(audioRef.current.src);
       }
 
+      // Create and play new audio
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
 
-      audio.onplay = () => setIsPlaying(true);
+      // Set up event handlers
+      audio.onplay = () => {
+        setIsPlaying(true);
+        console.log('Audio playback started');
+      };
+
       audio.onended = () => {
         setIsPlaying(false);
         URL.revokeObjectURL(audioUrl);
+        console.log('Audio playback completed');
       };
-      audio.onerror = () => {
+
+      audio.onerror = (e) => {
+        console.error('Audio playback error:', e);
         setIsPlaying(false);
         URL.revokeObjectURL(audioUrl);
         toast({

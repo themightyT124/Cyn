@@ -795,7 +795,13 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       try {
         // Try to synthesize with existing voice
         const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+
+        // Set proper headers for WAV audio
         res.setHeader('Content-Type', 'audio/wav');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', audioBuffer.length);
+
+        // Send the audio data
         res.send(audioBuffer);
       } catch (error) {
         if (error instanceof Error && error.message.includes('not found')) {
@@ -823,7 +829,13 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
 
           // Try synthesis again with the new voice
           const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+
+          // Set proper headers for WAV audio
           res.setHeader('Content-Type', 'audio/wav');
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Content-Length', audioBuffer.length);
+
+          // Send the audio data
           res.send(audioBuffer);
         } else {
           throw error;
