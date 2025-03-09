@@ -1,0 +1,16 @@
+{
+  "voiceId": "default-voice",
+  "name": "Default Voice",
+  "description": "Automatically created voice",
+  "samplingRate": 22050,
+  "frameSize": 1024,
+  "hopSize": 256,
+  "features": {
+    "useMfcc": true,
+    "useF0": true,
+    "useProsody": true
+  },
+  "epochs": 100,
+  "batchSize": 32,
+  "learningRate": 0.001
+}

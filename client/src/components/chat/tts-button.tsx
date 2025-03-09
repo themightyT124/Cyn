@@ -13,10 +13,14 @@ export function TTSButton({ text, className }: TTSButtonProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const synth = window.speechSynthesis;
 
   const handlePlay = async () => {
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
+    if (isPlaying) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      synth.cancel();
       setIsPlaying(false);
       return;
     }
@@ -24,10 +28,8 @@ export function TTSButton({ text, className }: TTSButtonProps) {
     setIsLoading(true);
 
     try {
-      // Create a default voice ID if none exists
+      // First try custom voice synthesis
       const voiceId = 'default-voice';
-
-      // Request speech synthesis from our custom TTS engine
       const response = await fetch(`/api/voice/${voiceId}/synthesize`, {
         method: 'POST',
         headers: {
@@ -36,62 +38,81 @@ export function TTSButton({ text, className }: TTSButtonProps) {
         body: JSON.stringify({ text }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Speech synthesis failed: ${response.statusText}`);
+      if (response.ok) {
+        const audioBlob = await response.blob();
+        if (audioBlob.size > 0) {
+          // Use custom voice
+          const audioUrl = URL.createObjectURL(audioBlob);
+          if (audioRef.current) {
+            audioRef.current.pause();
+            URL.revokeObjectURL(audioRef.current.src);
+          }
+
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+
+          audio.onplay = () => setIsPlaying(true);
+          audio.onended = () => {
+            setIsPlaying(false);
+            URL.revokeObjectURL(audioUrl);
+          };
+          audio.onerror = () => {
+            console.error("Custom voice playback failed, falling back to Web Speech API");
+            useBrowserTTS();
+          };
+
+          await audio.play();
+          setIsLoading(false);
+          return;
+        }
       }
 
-      // Get audio data as blob
-      const audioBlob = await response.blob();
+      // Fall back to Web Speech API
+      useBrowserTTS();
+    } catch (error) {
+      console.error("TTS error:", error);
+      // Fall back to Web Speech API
+      useBrowserTTS();
+    }
+  };
 
-      // Verify the blob type
-      if (audioBlob.size === 0) {
-        throw new Error('Generated audio is empty');
+  const useBrowserTTS = () => {
+    try {
+      if (!synth) {
+        throw new Error("Browser does not support speech synthesis");
       }
 
-      const audioUrl = URL.createObjectURL(audioBlob);
+      synth.cancel(); // Cancel any ongoing speech
+      const utterance = new SpeechSynthesisUtterance(text);
 
-      // Clean up previous audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
-      }
-
-      // Create and play new audio
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      // Set up event handlers
-      audio.onplay = () => {
+      utterance.onstart = () => {
         setIsPlaying(true);
-        console.log('Audio playback started');
+        setIsLoading(false);
       };
 
-      audio.onended = () => {
+      utterance.onend = () => {
         setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
-        console.log('Audio playback completed');
       };
 
-      audio.onerror = (e) => {
-        console.error('Audio playback error:', e);
+      utterance.onerror = (event) => {
+        console.error("Speech synthesis error:", event);
         setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
+        setIsLoading(false);
         toast({
-          title: "Playback Error",
-          description: "Failed to play the generated audio.",
+          title: "Speech Generation Failed",
+          description: "Could not generate speech. Please try again.",
           variant: "destructive"
         });
       };
 
-      await audio.play();
-      setIsLoading(false);
+      synth.speak(utterance);
     } catch (error) {
-      console.error("TTS error:", error);
+      console.error("Browser TTS error:", error);
       setIsLoading(false);
       setIsPlaying(false);
       toast({
         title: "Speech Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate speech.",
+        description: "Speech synthesis is not supported in your browser.",
         variant: "destructive"
       });
     }
