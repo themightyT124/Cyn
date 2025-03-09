@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { VoiceTrainingConfig, validateConfig } from './config/voice-config';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,28 @@ export class VoiceTrainer {
     for (const dir of dirs) {
       await fs.mkdir(dir, { recursive: true });
     }
+  }
+
+  private async runPythonScript(scriptPath: string, args: string[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const process = spawn('python3', [scriptPath, ...args]);
+
+      process.stdout.on('data', (data) => {
+        console.log(`Python stdout: ${data}`);
+      });
+
+      process.stderr.on('data', (data) => {
+        console.error(`Python stderr: ${data}`);
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Python process exited with code ${code}`));
+        }
+      });
+    });
   }
 
   async createVoice(config: Partial<VoiceTrainingConfig>): Promise<string> {
@@ -73,6 +96,10 @@ export class VoiceTrainer {
       }
     }
 
+    // Create a Python script to prepare data for Coqui TTS
+    const prepareScript = path.join(__dirname, 'scripts', 'prepare_data.py');
+    await this.runPythonScript(prepareScript, [trainingDir]);
+
     console.log(`Successfully prepared ${audioFiles.length} training files`);
   }
 
@@ -94,40 +121,16 @@ export class VoiceTrainer {
       throw new Error(`Failed to load voice configuration for ${voiceId}`);
     }
 
-    // Verify training data exists
-    try {
-      const files = await fs.readdir(trainingDir);
-      const audioFiles = files.filter(f => f.endsWith('.wav'));
-      if (audioFiles.length === 0) {
-        throw new Error('No training audio files found');
-      }
-      console.log(`Found ${audioFiles.length} audio files for training`);
-    } catch (error) {
-      console.error(`Error accessing training data:`, error);
-      throw new Error('Training data not found or inaccessible');
-    }
-
     // Create model directory
     await fs.mkdir(modelDir, { recursive: true });
 
-    // TODO: Implement actual training logic using TensorFlow.js or similar
-    // For now, create a basic model file that at least enables synthesis
-    const modelData = {
-      id: voiceId,
-      config: config,
-      features: {
-        mfcc: true,
-        pitch: true,
-        energy: true
-      },
-      status: 'trained',
-      timestamp: new Date().toISOString()
-    };
-
-    await fs.writeFile(
-      path.join(modelDir, 'model.json'),
-      JSON.stringify(modelData, null, 2)
-    );
+    // Run Coqui TTS training script
+    const trainScript = path.join(__dirname, 'scripts', 'train_model.py');
+    await this.runPythonScript(trainScript, [
+      trainingDir,
+      modelDir,
+      JSON.stringify(config)
+    ]);
 
     console.log(`Completed voice training for ${voiceId}`);
   }
@@ -144,33 +147,23 @@ export class VoiceTrainer {
       throw new Error(`Model for voice ${voiceId} not found`);
     }
 
-    try {
-      // Load model configuration
-      const modelConfigPath = path.join(modelDir, 'model.json');
-      const modelConfig = JSON.parse(await fs.readFile(modelConfigPath, 'utf-8'));
-      console.log(`Loaded model configuration:`, modelConfig);
+    // Run Coqui TTS synthesis script
+    const synthesizeScript = path.join(__dirname, 'scripts', 'synthesize.py');
+    const outputFile = path.join(modelDir, `output_${Date.now()}.wav`);
 
-      // For now, we'll create a simple WAV file as a placeholder
-      // In a real implementation, this would use the trained model
-      const { WaveFile } = await import('wavefile');
-      const wav = new WaveFile();
+    await this.runPythonScript(synthesizeScript, [
+      modelDir,
+      text,
+      outputFile
+    ]);
 
-      // Create a simple sine wave as placeholder audio
-      const sampleRate = 22050;
-      const seconds = 2;
-      const samples = new Float32Array(sampleRate * seconds);
-      for (let i = 0; i < samples.length; i++) {
-        samples[i] = Math.sin(440 * Math.PI * 2 * i / sampleRate);
-      }
+    // Read the generated audio file
+    const audioBuffer = await fs.readFile(outputFile);
 
-      wav.fromScratch(1, sampleRate, '32f', samples);
-      console.log(`Generated placeholder audio for text: "${text}"`);
+    // Clean up the temporary file
+    await fs.unlink(outputFile);
 
-      return Buffer.from(wav.toBuffer());
-    } catch (error) {
-      console.error(`Error synthesizing speech:`, error);
-      throw new Error('Failed to synthesize speech');
-    }
+    return audioBuffer;
   }
 }
 
