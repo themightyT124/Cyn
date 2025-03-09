@@ -790,10 +790,45 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         });
       }
 
-      const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+      console.log(`Received synthesis request for voice ${voiceId} with text: "${text}"`);
 
-      res.setHeader('Content-Type', 'audio/wav');
-      res.send(audioBuffer);
+      try {
+        // Try to synthesize with existing voice
+        const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+        res.setHeader('Content-Type', 'audio/wav');
+        res.send(audioBuffer);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('not found')) {
+          console.log('Voice not found, creating default voice');
+          // Create a default voice if none exists
+          const defaultConfig = {
+            voiceId,
+            name: "Default Voice",
+            description: "Automatically created voice",
+            samplingRate: 22050,
+            frameSize: 1024,
+            hopSize: 256,
+            features: {
+              useMfcc: true,
+              useF0: true,
+              useProsody: true
+            },
+            epochs: 100,
+            batchSize: 32,
+            learningRate: 0.001
+          };
+
+          await voiceTrainer.createVoice(defaultConfig);
+          await voiceTrainer.trainVoice(voiceId);
+
+          // Try synthesis again with the new voice
+          const audioBuffer = await voiceTrainer.synthesizeSpeech(voiceId, text);
+          res.setHeader('Content-Type', 'audio/wav');
+          res.send(audioBuffer);
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       res.status(500).json({
