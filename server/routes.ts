@@ -5,73 +5,31 @@ import { fileURLToPath } from "url";
 import { storage } from "./storage";
 import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { spawn } from "child_process";
+import { exec } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// TTS configuration
+// Define training data directory
 const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
-const CYN_VOICE_CONFIG = path.join(__dirname, '..', 'cyn-voice-training-data.json');
 
-// Voice synthesis function using Coqui TTS
-async function synthesizeSpeech(text: string, voiceId: string = 'cyn_voice'): Promise<Buffer> {
+// Simple TTS function using node-gtts
+async function synthesizeSpeech(text: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python3', [
-      '-c',
-      `
-import torch
-import numpy as np
-from TTS.utils.manage import ModelManager
-from TTS.utils.synthesizer import Synthesizer
-from TTS.config import load_config
-import json
-import sys
+    const gTTS = require('node-gtts')('en');
+    const tmpFile = path.join(__dirname, '..', 'temp', `speech_${Date.now()}.mp3`);
 
-# Force CPU mode
-torch.set_grad_enabled(False)
-device = torch.device('cpu')
-
-try:
-    # Initialize TTS with pretrained model for now
-    model_manager = ModelManager()
-    model_path, config_path, model_item = model_manager.download_model("tts_models/en/ljspeech/tacotron2-DDC")
-    voc_path, voc_config_path, _ = model_manager.download_model("vocoder_models/en/ljspeech/hifigan_v2")
-
-    # Create synthesizer with explicit CPU device
-    synthesizer = Synthesizer(
-        model_path,
-        config_path,
-        None,
-        None,
-        vocoder_path=voc_path,
-        vocoder_config_path=voc_config_path,
-        use_cuda=False
-    )
-
-    # Synthesize speech
-    wav = synthesizer.tts("${text}")
-
-    # Convert to 16-bit PCM WAV
-    wav = np.int16(wav * 32767)
-    sys.stdout.buffer.write(wav.tobytes())
-except Exception as e:
-    print(f"TTS Error: {str(e)}", file=sys.stderr)
-    sys.exit(1)
-      `
-    ]);
-
-    const chunks: Buffer[] = [];
-    pythonProcess.stdout.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-    pythonProcess.stderr.on('data', (data) => console.error(`TTS Error: ${data}`));
-
-    pythonProcess.on('close', (code) => {
-      if (code === 0) {
-        resolve(Buffer.concat(chunks));
-      } else {
-        reject(new Error(`TTS process exited with code ${code}`));
-      }
-    });
+    // Ensure temp directory exists
+    fs.mkdir(path.dirname(tmpFile), { recursive: true }).then(() => {
+      gTTS.save(tmpFile, text, () => {
+        fs.readFile(tmpFile)
+          .then(data => {
+            fs.unlink(tmpFile).catch(console.error); // Cleanup
+            resolve(data);
+          })
+          .catch(reject);
+      });
+    }).catch(reject);
   });
 }
 
@@ -603,8 +561,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
   // New endpoint to analyze and fix voice samples
   router.get("/api/tts/analyze", async (_req: Request, res: Response) => {
     try {
-      const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
-
       // Check if directory exists
       let directoryExists = false;
       try {
@@ -837,7 +793,7 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
-  // Update voice synthesis endpoint
+  // Update voice synthesis endpoint to use simpler TTS
   router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
@@ -853,8 +809,8 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
 
       const audioBuffer = await synthesizeSpeech(text);
 
-      // Set proper headers for WAV audio
-      res.setHeader('Content-Type', 'audio/wav');
+      // Set proper headers for MP3 audio
+      res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Content-Length', audioBuffer.length);
 
@@ -901,6 +857,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       });    }
   });
 
-app.use(router);
+  app.use(router);
   return app.listen();
 }
