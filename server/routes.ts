@@ -6,6 +6,9 @@ import { fileURLToPath } from "url";
 import { storage } from "./storage";
 import { log } from "./vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+// Import fakeyouClient -  You'll need to define this based on your FakeYou library
+import fakeyouClient from './fakeyouClient'; // Or wherever your client is defined
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,8 +88,8 @@ export async function registerRoutes(app: express.Express) {
       });
     } catch (error) {
       console.error("Error getting voice samples:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Error retrieving voice samples",
         error: String(error)
       });
@@ -135,14 +138,67 @@ export async function registerRoutes(app: express.Express) {
       });
     } catch (error) {
       console.error("Error in TTS debug endpoint:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Error running TTS diagnostics",
         error: String(error)
       });
     }
   });
 
+
+  // Add these routes inside the registerRoutes function before app.use(router)
+
+  // Speech-to-Speech conversion endpoint
+  router.post("/api/speech-to-speech", async (req: Request, res: Response) => {
+    try {
+      // Check if audio file is provided
+      if (!req.files || !req.files.audio) {
+        return res.status(400).json({
+          success: false,
+          error: "No audio file provided"
+        });
+      }
+
+      const audioFile = req.files.audio as any;
+
+      // Convert audio file to blob
+      const audioBlob = new Blob([audioFile.data], { type: audioFile.mimetype });
+
+      // Use FakeYou client for conversion
+      const conversionRequest = await fakeyouClient.convertSpeechToSpeech(audioBlob);
+
+      if (!conversionRequest.success || !conversionRequest.inference_job_token) {
+        throw new Error(conversionRequest.error || 'Failed to start voice conversion');
+      }
+
+      res.json({
+        success: true,
+        jobToken: conversionRequest.inference_job_token
+      });
+    } catch (error) {
+      console.error("Error in speech-to-speech conversion:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to convert speech"
+      });
+    }
+  });
+
+  // Check speech-to-speech conversion status
+  router.get("/api/speech-to-speech/:jobToken", async (req: Request, res: Response) => {
+    try {
+      const { jobToken } = req.params;
+      const status = await fakeyouClient.getTTSStatus(jobToken);
+      res.json(status);
+    } catch (error) {
+      console.error("Error checking conversion status:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to check conversion status"
+      });
+    }
+  });
 
   // Add a new message and get AI response
   router.post("/api/messages", async (req: Request, res: Response) => {
@@ -297,190 +353,6 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         })
       ];
 
-  // Split large voice samples into smaller chunks
-  router.post("/api/tts/split-samples", async (_req: Request, res: Response) => {
-    try {
-      console.log("Received request to split voice samples");
-
-      // Import the splitter function dynamically to avoid circular dependencies
-      const { splitLargeVoiceSamples } = await import('./voice-sample-splitter');
-
-      console.log("Running voice sample splitter...");
-      const result = await splitLargeVoiceSamples();
-
-      if (result.success) {
-        console.log(`Successfully processed ${result.processed?.length || 0} voice samples`);
-        res.json({
-          success: true,
-          message: `Successfully processed ${result.processed?.length || 0} voice samples`,
-          processed: result.processed
-        });
-      } else {
-        console.error("Voice sample processing failed:", result.message || "Unknown error");
-        res.status(400).json({
-          success: false,
-          message: result.message || "Failed to process voice samples",
-          error: result.error
-        });
-      }
-    } catch (error) {
-      console.error("Error splitting voice samples:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error splitting voice samples",
-        error: String(error)
-      });
-    }
-  });
-
-  // Simplified TTS endpoint that returns success without processing
-  // This is needed to maintain API compatibility while we use Web Speech API on client side
-  router.post("/api/tts/speak", async (req: Request, res: Response) => {
-    // Set content type to ensure proper response format
-    res.setHeader('Content-Type', 'application/json');
-
-    try {
-      // Just return success - actual TTS happens in the browser
-      return res.json({
-        success: true,
-        message: "Using browser-based TTS instead of server TTS",
-        useBrowserTTS: true
-      });
-    } catch (error) {
-      console.error("Error in TTS endpoint:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Error processing TTS request",
-        error: String(error)
-      });
-    }
-  });
-
-  // New endpoint to analyze and fix voice samples
-  router.get("/api/tts/analyze", async (_req: Request, res: Response) => {
-    try {
-      const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
-
-      // Check if directory exists
-      let directoryExists = false;
-      try {
-        await fs.access(TRAINING_DATA_DIR);
-        directoryExists = true;
-      } catch (e) {
-        console.log(`Voice samples directory doesn't exist: ${TRAINING_DATA_DIR}`);
-      }
-
-      if (!directoryExists) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Voice samples directory doesn't exist" 
-        });
-      }
-
-      const files = await fs.readdir(TRAINING_DATA_DIR);
-      const voiceFiles = files.filter(file => file.endsWith('.wav'));
-
-      // Get file info
-      const fileInfo = [];
-      for (const file of voiceFiles) {
-        try {
-          const filePath = path.join(TRAINING_DATA_DIR, file);
-          const stats = await fs.stat(filePath);
-          const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-
-          // Use ffprobe to get duration if available
-          let duration = "Unknown";
-          try {
-
-  // OpenAI TTS endpoint
-  router.post("/api/tts/openai", async (req: Request, res: Response) => {
-    res.setHeader('Content-Type', 'application/json');
-
-    try {
-      const { text, voice = "alloy" } = req.body;
-
-      if (!text) {
-        return res.status(400).json({ success: false, message: "No text provided" });
-      }
-
-      console.log(`Processing OpenAI TTS request for text: "${text}" using voice: ${voice}`);
-
-      // Create a unique filename for the output
-      const outputFileName = `openai_tts_${Date.now()}.mp3`;
-      const outputPath = path.join(__dirname, '..', 'public', outputFileName);
-
-      // This is a fallback implementation that doesn't actually call OpenAI
-      // but simulates a successful response for demonstration purposes
-      // In a real implementation, you would call the OpenAI API here
-      
-      // Simulate successful processing
-      return res.json({
-        success: true,
-        message: "Text processed using OpenAI TTS",
-        audioUrl: `/public/${outputFileName}`,
-        text,
-        metadata: {
-          engine: "openai",
-          voice: voice,
-          duration: Math.ceil(text.split(' ').length / 3),
-          wordCount: text.split(' ').length
-        }
-      });
-
-    } catch (error) {
-      console.error("Error in OpenAI TTS endpoint:", error);
-      return res.status(500).json({
-        success: false, 
-        message: "Error processing OpenAI TTS request",
-        error: String(error)
-      });
-    }
-  });
-
-            const ffprobePath = ffmpegPath?.replace('ffmpeg', 'ffprobe') || 'ffprobe';
-            const durationOutput = execSync(
-              `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`
-            ).toString().trim();
-            duration = `${parseFloat(durationOutput).toFixed(2)} seconds`;
-          } catch (e) {
-            console.error(`Could not determine duration for ${file}:`, e);
-          }
-
-          fileInfo.push({
-            file,
-            size: `${fileSizeMB} MB`,
-            duration: duration,
-            isChunk: file.includes('_chunk_'),
-            isOriginal: file.includes('_original'),
-            path: filePath
-          });
-        } catch (err) {
-          console.error(`Error analyzing ${file}:`, err);
-        }
-      }
-
-      res.json({
-        success: true,
-        files: fileInfo,
-        directory: TRAINING_DATA_DIR,
-        totalFiles: voiceFiles.length,
-        chunks: fileInfo.filter(f => f.isChunk).length,
-        originals: fileInfo.filter(f => f.isOriginal).length,
-        unprocessed: fileInfo.filter(f => !f.isChunk && !f.isOriginal).length
-      });
-
-    } catch (error) {
-      console.error("Error analyzing voice samples:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error analyzing voice samples",
-        error: String(error)
-      });
-    }
-  });
-
-
-
       // Also include Results if available (sometimes DuckDuckGo puts important info here)
       if (data.Results && Array.isArray(data.Results) && data.Results.length > 0) {
         const additionalResults = data.Results.map((result: any) => ({
@@ -542,10 +414,10 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
               // Don't log the full URL to avoid console spam
             }
 
-            return { 
-              title, 
-              snippet, 
-              link, 
+            return {
+              title,
+              snippet,
+              link,
               source,
               description: `From ${source}: ${snippet.substring(0, 120)}${snippet.length > 120 ? '...' : ''}`
             };
@@ -555,7 +427,7 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         }
       }
 
-      res.json({ 
+      res.json({
         success: true,
         results: results,
         query: query, // Include the query in response for debugging
@@ -586,9 +458,9 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
         });
       } catch (backupError) {
         // If all else fails, return the error
-        return res.status(500).json({ 
-          success: false, 
-          error: backupError instanceof Error ? backupError.message : "An unexpected error occurred" 
+        return res.status(500).json({
+          success: false,
+          error: backupError instanceof Error ? backupError.message : "An unexpected error occurred"
         });
       }
     }
@@ -600,9 +472,9 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     const apiKey = process.env.STABILITY_API_KEY;
 
     if (!prompt) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Prompt is required" 
+      return res.status(400).json({
+        success: false,
+        error: "Prompt is required"
       });
     }
 
@@ -649,16 +521,198 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       // Stability API returns base64 encoded images
       const imageUrl = `data:image/png;base64,${data.artifacts[0].base64}`;
 
-      res.json({ 
+      res.json({
         success: true,
         imageUrl,
         message: "Image generated successfully"
       });
     } catch (error) {
       console.error("Error generating image:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "An unexpected error occurred" 
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
+    }
+  });
+
+  // Split large voice samples into smaller chunks
+  router.post("/api/tts/split-samples", async (_req: Request, res: Response) => {
+    try {
+      console.log("Received request to split voice samples");
+
+      // Import the splitter function dynamically to avoid circular dependencies
+      const { splitLargeVoiceSamples } = await import('./voice-sample-splitter');
+
+      console.log("Running voice sample splitter...");
+      const result = await splitLargeVoiceSamples();
+
+      if (result.success) {
+        console.log(`Successfully processed ${result.processed?.length || 0} voice samples`);
+        res.json({
+          success: true,
+          message: `Successfully processed ${result.processed?.length || 0} voice samples`,
+          processed: result.processed
+        });
+      } else {
+        console.error("Voice sample processing failed:", result.message || "Unknown error");
+        res.status(400).json({
+          success: false,
+          message: result.message || "Failed to process voice samples",
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error("Error splitting voice samples:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error splitting voice samples",
+        error: String(error)
+      });
+    }
+  });
+
+  // Simplified TTS endpoint that returns success without processing
+  // This is needed to maintain API compatibility while we use Web Speech API on client side
+  router.post("/api/tts/speak", async (req: Request, res: Response) => {
+    // Set content type to ensure proper response format
+    res.setHeader('Content-Type', 'application/json');
+
+    try {
+      // Just return success - actual TTS happens in the browser
+      return res.json({
+        success: true,
+        message: "Using browser-based TTS instead of server TTS",
+        useBrowserTTS: true
+      });
+    } catch (error) {
+      console.error("Error in TTS endpoint:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error processing TTS request",
+        error: String(error)
+      });
+    }
+  });
+
+  // New endpoint to analyze and fix voice samples
+  router.get("/api/tts/analyze", async (_req: Request, res: Response) => {
+    try {
+      const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
+
+      // Check if directory exists
+      let directoryExists = false;
+      try {
+        await fs.access(TRAINING_DATA_DIR);
+        directoryExists = true;
+      } catch (e) {
+        console.log(`Voice samples directory doesn't exist: ${TRAINING_DATA_DIR}`);
+      }
+
+      if (!directoryExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Voice samples directory doesn't exist"
+        });
+      }
+
+      const files = await fs.readdir(TRAINING_DATA_DIR);
+      const voiceFiles = files.filter(file => file.endsWith('.wav'));
+
+      // Get file info
+      const fileInfo = [];
+      for (const file of voiceFiles) {
+        try {
+          const filePath = path.join(TRAINING_DATA_DIR, file);
+          const stats = await fs.stat(filePath);
+          const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+          // Use ffprobe to get duration if available
+          let duration = "Unknown";
+          try {
+            const ffprobePath = ffmpegPath?.replace('ffmpeg', 'ffprobe') || 'ffprobe';
+            const durationOutput = execSync(
+              `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`
+            ).toString().trim();
+            duration = `${parseFloat(durationOutput).toFixed(2)} seconds`;
+          } catch (e) {
+            console.error(`Could not determine duration for ${file}:`, e);
+          }
+
+          fileInfo.push({
+            file,
+            size: `${fileSizeMB} MB`,
+            duration: duration,
+            isChunk: file.includes('_chunk_'),
+            isOriginal: file.includes('_original'),
+            path: filePath
+          });
+        } catch (err) {
+          console.error(`Error analyzing ${file}:`, err);
+        }
+      }
+
+      res.json({
+        success: true,
+        files: fileInfo,
+        directory: TRAINING_DATA_DIR,
+        totalFiles: voiceFiles.length,
+        chunks: fileInfo.filter(f => f.isChunk).length,
+        originals: fileInfo.filter(f => f.isOriginal).length,
+        unprocessed: fileInfo.filter(f => !f.isChunk && !f.isOriginal).length
+      });
+
+    } catch (error) {
+      console.error("Error analyzing voice samples:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error analyzing voice samples",
+        error: String(error)
+      });
+    }
+  });
+
+
+  // OpenAI TTS endpoint
+  router.post("/api/tts/openai", async (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+
+    try {
+      const { text, voice = "alloy" } = req.body;
+
+      if (!text) {
+        return res.status(400).json({ success: false, message: "No text provided" });
+      }
+
+      console.log(`Processing OpenAI TTS request for text: "${text}" using voice: ${voice}`);
+
+      // Create a unique filename for the output
+      const outputFileName = `openai_tts_${Date.now()}.mp3`;
+      const outputPath = path.join(__dirname, '..', 'public', outputFileName);
+
+      // This is a fallback implementation that doesn't actually call OpenAI
+      // but simulates a successful response for demonstration purposes
+      // In a real implementation, you would call the OpenAI API here
+
+      // Simulate successful processing
+      return res.json({
+        success: true,
+        message: "Text processed using OpenAI TTS",
+        audioUrl: `/public/${outputFileName}`,
+        text,
+        metadata: {
+          engine: "openai",
+          voice: voice,
+          duration: Math.ceil(text.split(' ').length / 3),
+          wordCount: text.split(' ').length
+        }
+      });
+
+    } catch (error) {
+      console.error("Error in OpenAI TTS endpoint:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error processing OpenAI TTS request",
+        error: String(error)
       });
     }
   });
