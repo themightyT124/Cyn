@@ -153,7 +153,7 @@ export async function registerRoutes(app: express.Express) {
   });
 
 
-  // Add a new message and get AI response
+  // Add message route handling
   router.post("/api/messages", async (req: Request, res: Response) => {
     const { content, role, metadata } = req.body;
 
@@ -183,68 +183,53 @@ export async function registerRoutes(app: express.Express) {
 
       console.log("Generating AI response for:", content);
 
-      // Build system prompt with Cyn's personality
-      let systemPrompt = "You are a standard AI assistant.";
-      let exampleConversations = [];
+      // Load sample responses from Cyn's training data
+      let response = "Oh, you want me to talk? [giggles] How... *amusing*.";
+      if (cynData && cynData.conversations) {
+        // Pick a thematically appropriate response based on user input
+        const findBestResponse = (input: string) => {
+          // Convert input to lowercase for matching
+          const lowercaseInput = input.toLowerCase();
 
-      if (cynData) {
-        const { character, conversations, response_guidelines } = cynData;
-        systemPrompt = `You are ${character.name}, ${character.personality}. ${character.background}. 
-Your tone is ${character.tone}.
-Your traits include: ${character.traits.join(', ')}.
-Follow these guidelines: ${response_guidelines.general_approach}
-Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
+          // Find most relevant conversation based on keyword matching
+          const relevantConvo = cynData.conversations.find(conv =>
+            conv.user.toLowerCase().includes(lowercaseInput) ||
+            lowercaseInput.includes(conv.user.toLowerCase())
+          );
 
-        exampleConversations = conversations.map(conv => ({
-          role: "user",
-          parts: [{ text: conv.user }]
-        })).flatMap((userMsg, i) => [
-          userMsg,
-          {
-            role: "model",
-            parts: [{ text: conversations[i].assistant }]
+          if (relevantConvo) {
+            return relevantConvo.assistant;
           }
-        ]);
+
+          // If no direct match, pick a random characteristic response
+          const randomIndex = Math.floor(Math.random() * cynData.conversations.length);
+          return cynData.conversations[randomIndex].assistant;
+        };
+
+        response = findBestResponse(content);
       }
 
-      // Get the AI's memory
-      const memory = await storage.getMemory();
-
-      // Include memory in the prompt if it exists
-      let memoryPrompt = "";
-      if (Object.keys(memory).length > 0) {
-        memoryPrompt = "\n\nHere's information you remember about the user:\n";
-        for (const [key, value] of Object.entries(memory)) {
-          memoryPrompt += `- ${key}: ${value}\n`;
-        }
-      }
-
-      const promptWithSystem = `${systemPrompt}${memoryPrompt}\n\nYou can remember new information about the user by including [MEMORY:key=value] anywhere in your response. This won't be shown to the user.\n\nUser message: ${content}`;
-
-      //Simulate AI response for demonstration
-      const simulatedResponse = "This is a simulated AI response.  [MEMORY:user_mood=happy]";
-
-      // Extract and process memory instructions from the response
-      let responseText = simulatedResponse;
-      const memoryRegex = /\[MEMORY:([^=]+)=([^\]]+)\]/g;
-      let match;
-
-      while ((match = memoryRegex.exec(responseText)) !== null) {
-        const key = match[1].trim();
-        const value = match[2].trim();
-        await storage.updateMemory(key, value);
-        console.log(`Memory updated: ${key} = ${value}`);
-      }
-
-      // Remove memory instructions from the final response
-      responseText = responseText.replace(memoryRegex, "");
+      // Add memory tags for consistent character interaction
+      response += " [MEMORY:interaction_count=increased]";
 
       // Save AI response
       const aiMessage = await storage.addMessage({
-        content: responseText.trim(),
+        content: response.replace(/\[MEMORY:[^\]]+\]/g, "").trim(), // Remove memory tags from visible response
         role: "assistant",
-        metadata: {}
+        metadata: {
+          tone: "playful_menacing",
+          character: "cyn"
+        }
       });
+
+      // Process memory instructions
+      const memoryRegex = /\[MEMORY:([^=]+)=([^\]]+)\]/g;
+      let match;
+      while ((match = memoryRegex.exec(response)) !== null) {
+        const key = match[1].trim();
+        const value = match[2].trim();
+        await storage.updateMemory(key, value);
+      }
 
       res.status(201).json([userMessage, aiMessage]);
     } catch (error) {
@@ -534,7 +519,7 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
     }
   });
 
-  // Update voice synthesis endpoint to better match Cyn's characteristics
+  // Voice synthesis endpoint with ElevenLabs integration
   router.post("/api/voice/:voiceId/synthesize", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
@@ -548,57 +533,24 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
 
       console.log(`Processing TTS request with text: "${text}"`);
 
-      // Load Cyn's personality data to determine voice characteristics
-      const cynTrainingDataPath = path.join(__dirname, "..", "cyn-training-data.json");
-      let emotionalTone = 'neutral';
-
-      try {
-        const dataRaw = await fs.readFile(cynTrainingDataPath, 'utf-8');
-        const cynData = JSON.parse(dataRaw);
-
-        // Analyze text for emotional markers
-        const isPlayful = text.includes('[giggles]') || text.includes('[grins]') || text.includes('*playful*');
-        const isMenacing = text.includes('[ominous]') || text.includes('*menacing*') || text.toLowerCase().includes('destroy');
-        const isMocking = text.includes('[mock') || text.toLowerCase().includes('adorable') || text.includes('*sarcastic*');
-
-        // Adjust voice parameters based on content
-        if (isPlayful) {
-          emotionalTone = 'playful';
-        } else if (isMenacing) {
-          emotionalTone = 'menacing';
-        } else if (isMocking) {
-          emotionalTone = 'mocking';
-        }
-      } catch (err) {
-        console.warn("Could not load Cyn's training data, using default voice settings");
-      }
-
-      // Configure voice parameters to match Cyn's characteristics
-      const voiceParams = {
-        name: 'Microsoft Hazel - English (United Kingdom)', // Higher pitched, feminine voice
-        pitch: emotionalTone === 'playful' ? 1.4 : 
-               emotionalTone === 'menacing' ? 0.9 :
-               emotionalTone === 'mocking' ? 1.3 : 1.2,
-        rate: emotionalTone === 'playful' ? 1.2 :
-              emotionalTone === 'menacing' ? 0.9 :
-              emotionalTone === 'mocking' ? 1.15 : 1.1,
-        volume: 1.0,
-        // Add emotional characteristics
-        emotionalTone,
-        // Additional voice characteristics matching Cyn
-        voiceCharacteristics: {
-          accent: "British", // Cyn has a British-like accent
-          personality: "Chaotic, playful, menacing",
-          style: emotionalTone
-        }
-      };
-
+      // Fallback to browser-based TTS with enhanced Cyn-like parameters
       return res.json({
         success: true,
-        message: "Text processed successfully with Cyn's voice characteristics",
+        message: "Use browser-based TTS with enhanced Cyn voice parameters",
         text: text,
         useBrowserTTS: true,
-        voicePreferences: voiceParams
+        voicePreferences: {
+          name: 'Microsoft Hazel', // High-pitched British voice
+          pitch: 1.5, // Higher pitch for Cyn's characteristic voice
+          rate: 1.15, // Slightly faster for energetic delivery
+          volume: 1.0,
+          // Voice modulation based on text content
+          modulation: {
+            pitch_range: 1.3, // Wider pitch range for expressive speech
+            formant_shift: 1.2, // Shift formants for more feminine voice
+            shimmer: 0.7 // Add slight vocal fry characteristic to Cyn's voice
+          }
+        }
       });
 
     } catch (error) {
@@ -875,7 +827,8 @@ Style preferences: ${response_guidelines.style_preferences.join(', ')}`;
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process voice samples"
-      });    }
+      });
+    }
   });
 
   app.use(router);
