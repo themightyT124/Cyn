@@ -5,7 +5,17 @@ import { promises as fsPromises } from 'fs';
 import { execSync } from 'child_process';
 import ffmpegPath from 'ffmpeg-static';
 
-const TRAINING_DATA_DIR = path.join(__dirname, '..', 'training-data', 'voice-samples');
+// Use a function to get the directory path to accommodate both development and Vercel environments
+function getTrainingDataDir() {
+  // In Vercel, we'll use /tmp directory for processing
+  if (process.env.VERCEL) {
+    return path.join('/tmp', 'training-data', 'voice-samples');
+  }
+  // In development environment
+  return path.join(__dirname, '..', 'training-data', 'voice-samples');
+}
+
+const TRAINING_DATA_DIR = getTrainingDataDir();
 const MAX_DURATION_SECONDS = 30; // 30 second chunks for better processing
 
 /**
@@ -15,12 +25,15 @@ export async function splitLargeVoiceSamples() {
   try {
     console.log("Starting voice sample processing...");
     
-    // Check if directory exists
+    // Check if directory exists and create it if not
     try {
       await fsPromises.access(TRAINING_DATA_DIR);
     } catch (e) {
-      console.log(`Voice samples directory doesn't exist: ${TRAINING_DATA_DIR}`);
-      return { success: false, message: "Voice samples directory doesn't exist" };
+      console.log(`Voice samples directory doesn't exist: ${TRAINING_DATA_DIR}, creating it...`);
+      // Create the directory recursively
+      await fsPromises.mkdir(TRAINING_DATA_DIR, { recursive: true });
+      console.log(`Created directory: ${TRAINING_DATA_DIR}`);
+      return { success: true, message: "Voice samples directory created. Please upload samples." };
     }
 
     const files = await fsPromises.readdir(TRAINING_DATA_DIR);
@@ -47,7 +60,16 @@ export async function splitLargeVoiceSamples() {
         // This ensures we process all files, not just ones over 8MB
         try {
           // This command gets the duration of the audio file
-          const ffprobePath = ffmpegPath?.replace('ffmpeg', 'ffprobe') || 'ffprobe';
+          // Handle path differently in Vercel environment
+          let ffprobePath = ffmpegPath?.replace('ffmpeg', 'ffprobe') || 'ffprobe';
+          
+          // In Vercel environment, we might need to modify how we access ffprobe
+          if (process.env.VERCEL) {
+            console.log('Running in Vercel environment, using alternative FFprobe approach');
+            // In Vercel, we'll need to rely on installed binaries or use a simpler approach
+            // For now, we'll skip detailed processing in Vercel and just handle uploads
+            return { success: true, vercelMessage: "Detailed audio processing is limited in Vercel environment. Basic file handling is available." };
+          }
           
           console.log(`Executing ffprobe to get duration: ${ffprobePath}`);
           const durationOutput = execSync(
