@@ -1,6 +1,47 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Production build files
+dist/
+build/
+out/
+
+# Testing
+coverage/
+
+# Misc
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Environment variables
+.env
+
+# Cache
+.eslintcache
+.npm/
+.cache/
+
+# Temporary files
+tmp/
+temp/
+uploads/*
+!uploads/.gitkeep
+
+# Voice data files
+*.wav
+*.mp3
+*.bak
+voice-samples/
+training-data/voice-samples/
