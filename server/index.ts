@@ -74,5 +74,10 @@ const checkPortInUse = (port: number): Promise<boolean> => {
     });
   };
 
-  startServer(5000);
+  // Use the PORT environment variable provided by Vercel or default to 5000
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+  startServer(port);
 })();
+
+// For Vercel serverless functions
+export default app;
