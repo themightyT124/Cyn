@@ -1,11 +1,23 @@
 {
   "version": 2,
-  "buildCommand": "./build-for-vercel.sh",
+  "framework": null,
+  "buildCommand": "chmod +x ./build-for-vercel.sh && ./build-for-vercel.sh",
   "outputDirectory": "dist",
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api" },
     { "src": "/assets/(.*)", "dest": "/public/assets/$1" },
+    { "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico))", "dest": "/public/$1" },
     { "src": "/(.*)", "dest": "/public/index.html" }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "SERVER_ENV": "vercel"
+  },
+  "functions": {
+    "api/index.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }
