@@ -1,9 +1,9 @@
 /**
  * Utility functions for Vercel deployment
  */
-import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import path from 'path';
+import { promises as fsPromises } from 'fs';
 
 /**
  * Determines if the application is running in a Vercel environment
@@ -18,19 +18,9 @@ export function isVercelEnvironment(): boolean {
  */
 export function getTempDirectory(): string {
   if (isVercelEnvironment()) {
-    // In Vercel, only the /tmp directory is writable
     return '/tmp';
   }
-  
-  // In development, use os.tmpdir() or a project-relative directory
-  try {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    return path.join(__dirname, '..', 'tmp');
-  } catch (error) {
-    // Fallback if import.meta.url is not available
-    return path.join(process.cwd(), 'tmp');
-  }
+  return path.join(process.cwd(), 'tmp');
 }
 
 /**
@@ -38,19 +28,10 @@ export function getTempDirectory(): string {
  */
 export function getBaseDirectory(): string {
   if (isVercelEnvironment()) {
-    // In Vercel, use the deployment directory
+    // In Vercel, the base directory depends on the build output
     return process.cwd();
   }
-  
-  // In development
-  try {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    return path.join(__dirname, '..');
-  } catch (error) {
-    // Fallback
-    return process.cwd();
-  }
+  return process.cwd();
 }
 
 /**
@@ -58,19 +39,8 @@ export function getBaseDirectory(): string {
  * based on the current environment
  */
 export function getWritableFilePath(filename: string): string {
-  if (isVercelEnvironment()) {
-    // In Vercel, all files must be written to /tmp
-    return path.join('/tmp', filename);
-  }
-  
-  // In development, use the project directory
-  try {
-    const baseDir = getBaseDirectory();
-    return path.join(baseDir, filename);
-  } catch (error) {
-    // Fallback
-    return path.join(process.cwd(), filename);
-  }
+  const dir = getTempDirectory();
+  return path.join(dir, filename);
 }
 
 /**
@@ -78,16 +48,23 @@ export function getWritableFilePath(filename: string): string {
  * In Vercel, this will redirect to /tmp
  */
 export async function ensureWritableDirectory(dirPath: string): Promise<string> {
+  let targetDir = dirPath;
+  
   if (isVercelEnvironment()) {
-    // In Vercel, we need to use /tmp instead of the requested path
-    const tempPath = path.join('/tmp', path.basename(dirPath));
-    await fs.promises.mkdir(tempPath, { recursive: true });
-    return tempPath;
+    // In Vercel, we need to use /tmp
+    const relativePath = path.relative(process.cwd(), dirPath);
+    targetDir = path.join(getTempDirectory(), relativePath);
   }
   
-  // In development, use the requested path
-  await fs.promises.mkdir(dirPath, { recursive: true });
-  return dirPath;
+  try {
+    await fsPromises.access(targetDir, fs.constants.F_OK);
+  } catch (e) {
+    // Directory doesn't exist, create it
+    await fsPromises.mkdir(targetDir, { recursive: true });
+    console.log(`Created directory: ${targetDir}`);
+  }
+  
+  return targetDir;
 }
 
 /**
@@ -95,9 +72,11 @@ export async function ensureWritableDirectory(dirPath: string): Promise<string> 
  */
 export function logEnvironmentInfo(): void {
   console.log('Environment Information:');
-  console.log(`- Vercel Environment: ${isVercelEnvironment() ? 'Yes' : 'No'}`);
-  console.log(`- NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
-  console.log(`- Working Directory: ${process.cwd()}`);
-  console.log(`- Temp Directory: ${getTempDirectory()}`);
-  console.log(`- Base Directory: ${getBaseDirectory()}`);
+  console.log('------------------------');
+  console.log(`Vercel Environment: ${isVercelEnvironment() ? 'Yes' : 'No'}`);
+  console.log(`Current Working Directory: ${process.cwd()}`);
+  console.log(`Base Directory: ${getBaseDirectory()}`);
+  console.log(`Temp Directory: ${getTempDirectory()}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log('------------------------');
 }

@@ -173,8 +173,9 @@ export async function setupVoiceSamples(sampleFiles: string[]): Promise<string[]
           await fs.rename(wavPath, finalWavPath);
           console.log(`Moved WAV to: ${finalWavPath}`);
           processedFiles.push(finalWavPath);
-        } catch (moveError) {
+        } catch (error) {
           // If rename fails (could happen across volumes in Vercel), try copy+delete
+          const moveError = error as Error;
           console.error(`Could not move file, trying copy+delete: ${moveError.message}`);
           await fs.copyFile(wavPath, finalWavPath);
           try { await fs.unlink(wavPath); } catch (e) { /* ignore */ }
