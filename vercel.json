@@ -2,10 +2,6 @@
   "version": 2,
   "buildCommand": "./build-for-vercel.sh",
   "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/public/$1" }
-  ],
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api" },
