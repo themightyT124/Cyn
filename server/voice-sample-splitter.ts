@@ -4,15 +4,30 @@ import path from 'path';
 import { promises as fsPromises } from 'fs';
 import { execSync } from 'child_process';
 import ffmpegPath from 'ffmpeg-static';
+import { 
+  getBaseDirectory, 
+  getTempDirectory, 
+  isVercelEnvironment,
+  ensureWritableDirectory,
+  logEnvironmentInfo
+} from './vercel-utils';
 
-// Use a function to get the directory path to accommodate both development and Vercel environments
+// Log environment information for debugging
+logEnvironmentInfo();
+
+// Get training data directory based on environment
 function getTrainingDataDir() {
-  // In Vercel, we'll use /tmp directory for processing
-  if (process.env.VERCEL) {
-    return path.join('/tmp', 'training-data', 'voice-samples');
+  if (isVercelEnvironment()) {
+    // In Vercel, we need to use /tmp for any writable operations
+    const tempDir = path.join(getTempDirectory(), 'voice-samples');
+    console.log(`Using Vercel-compatible directory for voice samples: ${tempDir}`);
+    return tempDir;
   }
-  // In development environment
-  return path.join(__dirname, '..', 'training-data', 'voice-samples');
+  
+  // In development environment, use the standard project path
+  const projectDir = path.join(getBaseDirectory(), 'training-data', 'voice-samples');
+  console.log(`Using development directory for voice samples: ${projectDir}`);
+  return projectDir;
 }
 
 const TRAINING_DATA_DIR = getTrainingDataDir();
