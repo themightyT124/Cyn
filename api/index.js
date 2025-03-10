@@ -1,14 +1,36 @@
-// Vercel serverless function adapter
-import app from '../dist/index.js';
-import { createServer } from 'http';
+// Vercel serverless function adapter for Express
+// This is needed because Vercel functions expect a handler function
+// but we have a full Express app
 
-const server = createServer(app);
+// Import path and fs modules
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-export default function handler(req, res) {
-  // This adapter forwards the req, res objects to Express
-  return new Promise((resolve, reject) => {
-    server.emit('request', req, res);
-    res.on('finish', resolve);
-    res.on('error', reject);
-  });
+// Get directory info
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Check if we're in development or production
+const isDev = process.env.NODE_ENV !== 'production';
+
+// In development, use local server
+// In production, use the built app
+const appPath = isDev 
+  ? '../server/index.js' 
+  : '../dist/index.js';
+
+// Dynamic import to get the Express app
+export default async function handler(req, res) {
+  try {
+    // Get the app dynamically
+    const appModule = await import(appPath);
+    const app = appModule.default;
+    
+    // Forward request to Express app
+    app(req, res);
+  } catch (error) {
+    console.error('Error in serverless function:', error);
+    res.status(500).send('Server error');
+  }
 }
