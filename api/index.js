@@ -16,9 +16,10 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 // In development, use local server
 // In production, use the built app
+// Adjust path to specifically look for index.js in the root of dist
 const appPath = isDev 
   ? '../server/index.js' 
-  : '../dist/index.js';
+  : '../index.js';
 
 // Dynamic import to get the Express app
 export default async function handler(req, res) {

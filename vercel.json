@@ -9,6 +9,7 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api" },
+    { "src": "/assets/(.*)", "dest": "/public/assets/$1" },
     { "src": "/(.*)", "dest": "/public/index.html" }
   ]
 }

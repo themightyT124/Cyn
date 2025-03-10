@@ -39,6 +39,7 @@ This voice transformation application requires several environment variables to 
    - `DATABASE_URL` - Connection string for your database
    - `OPENAI_API_KEY` - If you're using OpenAI for voice synthesis
    - `GOOGLE_CLOUD_API_KEY` - If you're using Google Cloud for text-to-speech
+   - `STABILITY_API_KEY` - Required for image generation functionality
    - `NODE_ENV` - Set to "production" for the production environment
 
 If you're using any other external APIs, make sure to add their keys as well.
@@ -50,6 +51,11 @@ If you see raw code in your deployment instead of your application:
 1. Make sure the deployment is using the correct build command (`./build-for-vercel.sh`)
 2. Check that the Vercel configuration file (`vercel.json`) is in the root of your project
 3. Verify that the build script creates the correct output structure in the `dist` directory
+4. **IMPORTANT**: If you still see raw JavaScript/TypeScript code after deploying, try the following:
+   - Deploy directly from Git repository instead of using the Vercel CLI
+   - Ensure your Vercel project is configured as "Framework preset: Other" and not as "Vite"
+   - Clear the Vercel cache and redeploy
+   - Verify that your vercel.json routes and rewrites are correctly configured
 
 Voice transformation specific troubleshooting:
 
@@ -59,9 +65,19 @@ Voice transformation specific troubleshooting:
 
 3. **Audio Processing Errors**: Make sure any required audio processing modules are properly included in the build. Some audio libraries may require special handling in serverless environments.
 
-4. **Memory Limits**: Voice processing can be memory-intensive. If you encounter out-of-memory errors, consider upgrading your Vercel plan for more resources or optimizing your audio processing code.
+4. **Resource Limitations**: 
+   - **Memory**: Voice processing can be memory-intensive. If you encounter out-of-memory errors, consider upgrading your Vercel plan for more resources or optimizing your audio processing code.
+   - **Execution Time**: Vercel serverless functions have a maximum execution time (default is 10 seconds for the free tier, up to 60 seconds on paid plans). Complex voice processing operations may hit this limit. Consider breaking long operations into smaller chunks or using background processing with webhooks for completion notification.
 
-5. **Storage Issues**: If your application stores temporary audio files, be aware that Vercel's serverless functions have a read-only filesystem. Use cloud storage solutions instead of local file storage.
+5. **File System Limitations**: Vercel's serverless functions have a read-only filesystem, with the exception of the `/tmp` directory which can be used for temporary file storage. All audio processing that uses `fs` operations to write files must be modified to:
+   - Use the `/tmp` directory for temporary files: `path.join('/tmp', 'filename.wav')`
+   - Consider that files in `/tmp` are not guaranteed to persist between function invocations
+   - For permanent storage, integrate with a cloud storage service like AWS S3, Google Cloud Storage, or similar
+
+   Specific functions in `server/audio-converter.ts` need modification for Vercel:
+   - `convertMp3ToWav`
+   - `processVoiceSample`
+   - `setupVoiceSamples`
 
 ### 5. Production Deployment
 
@@ -80,3 +96,81 @@ This project is configured with:
 - `api/index.js` - Serverless function adapter for the Express backend
 
 These files work together to ensure your full-stack application deploys correctly on Vercel's serverless infrastructure.
+
+## Cloud Storage Integration
+
+For voice transformation applications deployed to Vercel, we recommend integrating with a cloud storage solution for storing voice samples and processed audio files. Here are some options:
+
+### Amazon S3
+```javascript
+// Install the AWS SDK
+// npm install aws-sdk
+
+import AWS from 'aws-sdk';
+
+// Configure AWS
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
+});
+
+// Upload a file
+async function uploadToS3(fileBuffer, fileName, contentType) {
+  const params = {
+    Bucket: process.env.S3_BUCKET_NAME,
+    Key: fileName,
+    Body: fileBuffer,
+    ContentType: contentType
+  };
+  
+  return s3.upload(params).promise();
+}
+
+// Download a file
+async function getFromS3(fileName) {
+  const params = {
+    Bucket: process.env.S3_BUCKET_NAME,
+    Key: fileName
+  };
+  
+  return s3.getObject(params).promise();
+}
+```
+
+### Google Cloud Storage
+```javascript
+// Install the Google Cloud Storage client
+// npm install @google-cloud/storage
+
+import { Storage } from '@google-cloud/storage';
+
+// Initialize storage
+const storage = new Storage();
+const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
+
+// Upload a file
+async function uploadToGCS(fileBuffer, fileName, contentType) {
+  const file = bucket.file(fileName);
+  const stream = file.createWriteStream({
+    metadata: {
+      contentType: contentType
+    }
+  });
+  
+  return new Promise((resolve, reject) => {
+    stream.on('error', (err) => reject(err));
+    stream.on('finish', () => resolve());
+    stream.end(fileBuffer);
+  });
+}
+
+// Download a file
+async function getFromGCS(fileName) {
+  const file = bucket.file(fileName);
+  const [fileBuffer] = await file.download();
+  return fileBuffer;
+}
+```
+
+Remember to add the corresponding environment variables to your Vercel project settings.
