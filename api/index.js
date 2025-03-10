@@ -15,11 +15,12 @@ const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV !== 'production';
 
 // In development, use local server
-// In production, use the built app
-// Adjust path to specifically look for index.js in the root of dist
+// In production, use the built app that should be in the dist root
 const appPath = isDev 
   ? '../server/index.js' 
-  : '../index.js';
+  : isDev === false && fs.existsSync(path.join(__dirname, '../server.js')) 
+    ? '../server.js' 
+    : '../index.js';
 
 // Dynamic import to get the Express app
 export default async function handler(req, res) {
@@ -32,6 +33,24 @@ export default async function handler(req, res) {
     app(req, res);
   } catch (error) {
     console.error('Error in serverless function:', error);
-    res.status(500).send('Server error');
+    
+    // Enhanced error reporting
+    const availableFiles = [];
+    try {
+      // List nearby files to help debugging
+      const rootDir = path.join(__dirname, '..');
+      const files = fs.readdirSync(rootDir);
+      files.forEach(file => availableFiles.push(file));
+    } catch (fsError) {
+      console.error('Error listing files:', fsError);
+    }
+    
+    res.status(500).json({
+      error: 'Server error',
+      message: error.message,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+      appPath: appPath,
+      availableFiles: availableFiles
+    });
   }
 }
