@@ -3,13 +3,13 @@
 A cutting-edge AI voice transformation platform specializing in character-specific voice cloning and personalization, with advanced audio processing capabilities.
 
 ## Quick Deploy (100% Free)
-[![Run on Repl.it](https://replit.com/badge/github/yourusername/ai-voice-transformation)](https://replit.com/new/github/yourusername/ai-voice-transformation)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
 
-Click the "Run on Repl.it" button above to instantly clone and run this project in your own Replit workspace! This deployment method is completely free and includes:
-- Free subdomain (your-project.username.repl.co)
+Deploy this project instantly on Render's free tier! This deployment method is completely free and includes:
+- Free subdomain (your-app.onrender.com)
 - Free SSL/HTTPS
-- Free Git version control
-- Basic analytics
+- Automatic Git deployments
+- Zero cost web service
 
 ## Key Features
 
@@ -29,22 +29,20 @@ Click the "Run on Repl.it" button above to instantly clone and run this project 
 
 ## Deployment Options
 
-### 1. Free Deployment with Replit (Recommended)
+### 1. Free Deployment with Render (Recommended)
 
-The easiest way to deploy this project is using Replit:
+The easiest way to deploy this project is using Render:
 
-1. Click the "Run on Repl.it" button above
-2. After the project loads, click the "Deploy" button at the top of your Replit workspace
-3. Your app will be deployed to a free subdomain: `your-project-name.username.repl.co`
+1. Click the "Deploy to Render" button above
+2. Connect your GitHub repository
+3. Your app will be deployed to a free subdomain: `your-app.onrender.com`
 4. The deployment includes:
    - Free SSL/HTTPS
-   - Git version control
-   - Basic analytics
-   - 24/7 availability (with Replit's hacker plan)
+   - Automatic deployments from Git
+   - Basic monitoring
+   - Zero cost web service
 
-### 2. Local Development and Other Deployments
-
-#### Local Development
+### 2. Local Development
 
 Prerequisites:
 - Node.js 18+ 
@@ -63,38 +61,6 @@ npm run dev
 
 # Visit http://localhost:5000
 ```
-
-#### GitHub Pages Deployment
-
-While this is primarily a full-stack application that requires a server, you can deploy the frontend to GitHub Pages:
-
-1. Update the `homepage` field in `package.json`:
-   ```json
-   "homepage": "https://yourusername.github.io/ai-voice-transformation"
-   ```
-
-2. Install GitHub Pages package:
-   ```bash
-   npm install --save-dev gh-pages
-   ```
-
-3. Add deployment scripts to `package.json`:
-   ```json
-   "scripts": {
-     "predeploy": "npm run build",
-     "deploy": "gh-pages -d dist"
-   }
-   ```
-
-4. Deploy to GitHub Pages:
-   ```bash
-   npm run deploy
-   ```
-
-#### Vercel Deployment
-
-For full-stack deployment including backend functionality, follow the instructions in [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md).
-
 
 ## Environment Setup
 
