@@ -2,6 +2,15 @@
 
 A cutting-edge AI voice transformation platform specializing in character-specific voice cloning and personalization, with advanced audio processing capabilities.
 
+## Quick Deploy (100% Free)
+[![Run on Repl.it](https://replit.com/badge/github/yourusername/ai-voice-transformation)](https://replit.com/new/github/yourusername/ai-voice-transformation)
+
+Click the "Run on Repl.it" button above to instantly clone and run this project in your own Replit workspace! This deployment method is completely free and includes:
+- Free subdomain (your-project.username.repl.co)
+- Free SSL/HTTPS
+- Free Git version control
+- Basic analytics
+
 ## Key Features
 
 - Voice synthesis and transformation
@@ -18,86 +27,44 @@ A cutting-edge AI voice transformation platform specializing in character-specif
 - **Audio Processing**: FFmpeg, Web Speech API
 - **Build Tools**: Vite, ESBuild
 
-## Project Structure
+## Deployment Options
 
-```
-├── api/                  # API handlers for serverless deployment
-├── client/               # React frontend application
-│   ├── src/
-│   │   ├── components/   # Reusable UI components
-│   │   ├── hooks/        # Custom React hooks
-│   │   ├── lib/          # Utility functions and API clients
-│   │   └── pages/        # Application pages
-├── public/               # Static assets
-├── server/               # Express backend server
-│   ├── routes.ts         # API route definitions
-│   ├── storage.ts        # Data storage interface
-│   └── audio-converter.ts # Audio processing utilities
-├── shared/               # Shared code between frontend and backend
-│   └── schema.ts         # Data schemas and types
-├── training-data/        # Directory for voice training data (gitignored)
-├── uploads/              # Directory for user uploads (gitignored)
-└── voice-training/       # Voice training utilities
-```
+### 1. Free Deployment with Replit (Recommended)
 
-## Getting Started
+The easiest way to deploy this project is using Replit:
 
-### Prerequisites
+1. Click the "Run on Repl.it" button above
+2. After the project loads, click the "Deploy" button at the top of your Replit workspace
+3. Your app will be deployed to a free subdomain: `your-project-name.username.repl.co`
+4. The deployment includes:
+   - Free SSL/HTTPS
+   - Git version control
+   - Basic analytics
+   - 24/7 availability (with Replit's hacker plan)
 
+### 2. Local Development and Other Deployments
+
+#### Local Development
+
+Prerequisites:
 - Node.js 18+ 
 - npm or yarn
 
-### Installation
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ai-voice-transformation.git
+cd ai-voice-transformation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/ai-voice-transformation.git
-   cd ai-voice-transformation
-   ```
+# Install dependencies
+npm install
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+# Start development server
+npm run dev
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open your browser and navigate to `http://localhost:5000`
-
-## Audio Processing Features
-
-### Voice Sample Processing
-
-The platform can process various audio files:
-
-- Converting MP3 to WAV format
-- Splitting large audio files into smaller chunks
-- Normalizing audio for better training results
-- Preparing voice samples for AI training
-
-### Voice Transformation
-
-After training with voice samples, the system can:
-
-- Generate speech in the trained voice
-- Apply voice characteristics to new text
-- Create personalized voice responses
-
-## Environment Setup
-
-Create a `.env` file in the root directory with the following variables (as needed):
-
-```
-GOOGLE_APPLICATION_CREDENTIALS=path/to/credentials.json
-OPENAI_API_KEY=your-openai-api-key
+# Visit http://localhost:5000
 ```
 
-## Deployment Options
-
-### GitHub Pages Deployment
+#### GitHub Pages Deployment
 
 While this is primarily a full-stack application that requires a server, you can deploy the frontend to GitHub Pages:
 
@@ -124,18 +91,31 @@ While this is primarily a full-stack application that requires a server, you can
    npm run deploy
    ```
 
-### Vercel Deployment
+#### Vercel Deployment
 
 For full-stack deployment including backend functionality, follow the instructions in [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md).
 
+
+## Environment Setup
+
+Create a `.env` file with:
+
+```env
+STABILITY_API_KEY=your-stability-api-key
+OPENAI_API_KEY=your-openai-api-key
+```
+
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+If you need help or have questions:
+1. Check our [Issues](https://github.com/yourusername/ai-voice-transformation/issues) page
+2. Join our [Discord community](https://discord.gg/yourdiscord)
+3. Email support at: support@yourdomain.com
