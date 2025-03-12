@@ -11,6 +11,41 @@ Deploy this project instantly on Render's free tier! This deployment method is c
 - Automatic Git deployments
 - Zero cost web service
 
+## Deployment Instructions
+
+### Option 1: One-Click Deploy (Easiest)
+1. Click the "Deploy to Render" button above
+2. Sign up/login to Render.com (free)
+3. Click "Connect" if prompted to connect your GitHub account
+4. Fill in the following details:
+   - **Name**: Choose a name for your service (e.g., "ai-voice-transformation")
+   - **Environment**: Leave as "Node"
+   - **Branch**: main
+5. Click "Create Web Service"
+6. Wait for deployment to complete (usually 2-5 minutes)
+7. Visit your new app at `https://your-app-name.onrender.com`
+
+### Option 2: Manual Deploy
+1. Fork this repository to your GitHub account
+2. Sign up/login to [Render.com](https://render.com)
+3. From the Render dashboard, click "New +" and select "Web Service"
+4. Connect your GitHub account if you haven't already
+5. Select the forked repository
+6. Configure the web service:
+   - **Name**: Choose a name for your service
+   - **Environment**: Node
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm run start`
+   - **Plan**: Free
+7. Add the following environment variables:
+   ```
+   NODE_ENV=production
+   PORT=10000
+   ```
+8. Click "Create Web Service"
+
+Your application will be deployed and available at `https://your-app-name.onrender.com`
+
 ## Key Features
 
 - Voice synthesis and transformation
@@ -27,22 +62,7 @@ Deploy this project instantly on Render's free tier! This deployment method is c
 - **Audio Processing**: FFmpeg, Web Speech API
 - **Build Tools**: Vite, ESBuild
 
-## Deployment Options
-
-### 1. Free Deployment with Render (Recommended)
-
-The easiest way to deploy this project is using Render:
-
-1. Click the "Deploy to Render" button above
-2. Connect your GitHub repository
-3. Your app will be deployed to a free subdomain: `your-app.onrender.com`
-4. The deployment includes:
-   - Free SSL/HTTPS
-   - Automatic deployments from Git
-   - Basic monitoring
-   - Zero cost web service
-
-### 2. Local Development
+## Local Development
 
 Prerequisites:
 - Node.js 18+ 
