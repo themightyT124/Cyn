@@ -189,21 +189,50 @@ export async function registerRoutes(app: express.Express) {
         // Pick a thematically appropriate response based on user input
         const findBestResponse = (input: string) => {
           // Convert input to lowercase for matching
-          const lowercaseInput = input.toLowerCase();
+          const lowercaseInput = input.toLowerCase().trim();
 
-          // Find most relevant conversation based on keyword matching
-          const relevantConvo = cynData.conversations.find(conv =>
-            conv.user.toLowerCase().includes(lowercaseInput) ||
-            lowercaseInput.includes(conv.user.toLowerCase())
+          // First try to find an exact match
+          const exactMatch = cynData.conversations.find(conv => 
+            conv.user.toLowerCase().trim() === lowercaseInput
           );
 
-          if (relevantConvo) {
-            return relevantConvo.assistant;
+          if (exactMatch) {
+            return exactMatch.assistant;
           }
 
-          // If no direct match, pick a random characteristic response
-          const randomIndex = Math.floor(Math.random() * cynData.conversations.length);
-          return cynData.conversations[randomIndex].assistant;
+          // Then try to find a close match based on keywords
+          const closeMatch = cynData.conversations.find(conv => {
+            const userWords = conv.user.toLowerCase().split(/\s+/);
+            const inputWords = lowercaseInput.split(/\s+/);
+            // Check if at least 50% of the words match
+            const matchingWords = userWords.filter(word => inputWords.includes(word));
+            return matchingWords.length >= Math.min(userWords.length, inputWords.length) * 0.5;
+          });
+
+          if (closeMatch) {
+            return closeMatch.assistant;
+          }
+
+          // Check for general greetings
+          const greetings = ['hi', 'hello', 'hey', 'greetings'];
+          if (greetings.some(greeting => lowercaseInput.includes(greeting))) {
+            const greetingResponses = cynData.conversations.filter(conv => 
+              greetings.some(g => conv.user.toLowerCase().includes(g))
+            );
+            if (greetingResponses.length > 0) {
+              const randomIndex = Math.floor(Math.random() * greetingResponses.length);
+              return greetingResponses[randomIndex].assistant;
+            }
+          }
+
+          // If no match found, use a default cryptic response
+          const defaultResponses = [
+            "Oh, how *interesting* that you'd say that... [tilts head curiously] Care to elaborate?",
+            "Hmm... your words are... *amusing*. [smirks] Do continue.",
+            "Well, isn't *this* a fascinating turn in our little chat? [grins mysteriously]"
+          ];
+
+          return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
         };
 
         response = findBestResponse(content);
