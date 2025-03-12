@@ -18,11 +18,17 @@ You get:
 
 ## Deployment Instructions
 
-### One-Click Deploy (Easiest)
-1. Click the "Remix on Glitch" button above
-2. Sign up/login to Glitch.com (free, no credit card needed)
-3. Wait for the project to import (usually 1-2 minutes)
-4. Your app will be live at `https://your-project-name.glitch.me`
+### Step-by-Step Guide:
+
+1. Go to [Glitch.com](https://glitch.com) and click "Sign Up" (it's free)
+2. After signing in, click "New Project" button at the top
+3. In the popup menu, select "Import from GitHub" 🔄
+4. Paste your repository URL and click "OK"
+5. Wait for the import to complete (1-2 minutes)
+6. Your app will automatically deploy and be live at:
+   `https://your-project-name.glitch.me`
+
+That's it! No additional configuration needed! 🎉
 
 ### Manual Deploy
 1. Create a free account on [Glitch.com](https://glitch.com)
@@ -30,6 +36,7 @@ You get:
 3. Paste your repository URL
 4. Wait for import to complete
 5. Your app is now live!
+
 
 ## Key Features
 
