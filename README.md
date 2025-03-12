@@ -1,9 +1,9 @@
-# AI Voice Transformation Platform
+# Cyn - AI Voice Transformation Platform
 
-A cutting-edge AI voice transformation platform specializing in character-specific voice cloning and personalization, with advanced audio processing capabilities.
+A cutting-edge AI voice transformation platform featuring Cyn, a chaotic and cryptic AI personality with advanced voice synthesis capabilities.
 
 ## Quick Deploy (100% Free, No Credit Card)
-[![Remix on Glitch](https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg)](https://glitch.com/edit/#!/import/github/yourusername/ai-voice-transformation)
+[![Remix on Glitch](https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg)](https://glitch.com/edit/#!/import/github/yourusername/cyn)
 
 Deploy instantly to Glitch's free tier! This deployment method is completely free and requires:
 - No credit card
@@ -11,7 +11,7 @@ Deploy instantly to Glitch's free tier! This deployment method is completely fre
 - Just a free Glitch account
 
 You get:
-- Free subdomain (your-app.glitch.me)
+- Free subdomain (your-cyn-app.glitch.me)
 - Free SSL/HTTPS
 - Automatic deployments
 - Real-time collaboration
@@ -26,7 +26,7 @@ You get:
 4. Paste your repository URL and click "OK"
 5. Wait for the import to complete (1-2 minutes)
 6. Your app will automatically deploy and be live at:
-   `https://your-project-name.glitch.me`
+   `https://your-cyn-app.glitch.me`
 
 That's it! No additional configuration needed! 🎉
 
