@@ -70,14 +70,15 @@ const checkPortInUse = (port: number): Promise<boolean> => {
 
     server.listen(port, "0.0.0.0", () => {
       console.log(`✅ Server running on port ${port}`);
+      console.log(`✅ Server URL: http://0.0.0.0:${port}`);
       log(`✅ Server running on port ${port}`);
     });
   };
 
-  // Use the PORT environment variable provided by Render or default to 5000
+  // Use port 5000 as the default to match .replit configuration
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+  console.log(`🚀 Starting server on port ${port}...`);
   startServer(port);
 })();
 
-// For Render serverless functions
 export default app;
