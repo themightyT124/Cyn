@@ -15,6 +15,7 @@ You get:
 - Free SSL/HTTPS
 - Automatic deployments
 - Real-time collaboration
+- 24/7 uptime with UptimeRobot (free)
 
 ## Deployment Instructions
 
@@ -25,23 +26,24 @@ You get:
 3. In the popup menu, select "Import from GitHub" 🔄
 4. Paste your repository URL and click "OK"
 5. Wait for the import to complete (1-2 minutes)
-6. Your app will automatically deploy and be live at:
-   `https://your-cyn-app.glitch.me`
+6. Your app will be live at: `https://your-cyn-app.glitch.me`
 
-That's it! No additional configuration needed! 🎉
+### Setting Up 24/7 Uptime (Important!)
 
-### Manual Deploy
-1. Create a free account on [Glitch.com](https://glitch.com)
-2. Click "New Project" → "Import from GitHub"
-3. Paste your repository URL
-4. Wait for import to complete
-5. Your app is now live!
+To keep your app running 24/7 for free:
 
+1. Go to [UptimeRobot.com](https://uptimerobot.com) and create a free account
+2. Click "Add New Monitor"
+3. Select "HTTP(s)" as the monitor type
+4. Set your Glitch URL: `https://your-cyn-app.glitch.me/health`
+5. Set checking interval to 5 minutes
+6. Click "Create Monitor"
+
+That's it! Your app will now stay online 24/7! 🎉
 
 ## Key Features
 
 - Voice synthesis and transformation
-- Voice sample training and processing
 - Character-specific voice cloning
 - Web-based interface with React
 - Real-time audio processing
@@ -62,8 +64,8 @@ Prerequisites:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ai-voice-transformation.git
-cd ai-voice-transformation
+git clone https://github.com/yourusername/cyn.git
+cd cyn
 
 # Install dependencies
 npm install
@@ -94,6 +96,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 If you need help or have questions:
-1. Check our [Issues](https://github.com/yourusername/ai-voice-transformation/issues) page
+1. Check our [Issues](https://github.com/yourusername/cyn/issues) page
 2. Join our [Discord community](https://discord.gg/yourdiscord)
 3. Email support at: support@yourdomain.com

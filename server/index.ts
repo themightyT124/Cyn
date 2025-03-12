@@ -18,6 +18,11 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 const server = createServer(app);
 
+// Health Check endpoint for UptimeRobot
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Debugging Middleware
 app.use((req, res, next) => {
   console.log(`🟢 Received request: ${req.method} ${req.url}`);
