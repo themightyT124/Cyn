@@ -3,43 +3,34 @@
 A cutting-edge AI voice transformation platform featuring Cyn, a chaotic and cryptic AI personality with advanced voice synthesis capabilities.
 
 ## Quick Deploy (100% Free, No Credit Card)
-[![Remix on Glitch](https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg)](https://glitch.com/edit/#!/import/github/yourusername/cyn)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/yourusername/cyn)
 
-Deploy instantly to Glitch's free tier! This deployment method is completely free and requires:
+Deploy instantly to Railway's free tier! This deployment method is completely free and requires:
 - No credit card
 - No paid subscription
-- Just a free Glitch account
+- Just a free Railway account
 
 You get:
-- Free subdomain (your-cyn-app.glitch.me)
+- Free subdomain (your-app.railway.app)
+- Reliable 24/7 uptime
 - Free SSL/HTTPS
 - Automatic deployments
-- Real-time collaboration
-- 24/7 uptime with UptimeRobot (free)
+- 500 hours free runtime monthly
+- Real-time logs and monitoring
 
 ## Deployment Instructions
 
 ### Step-by-Step Guide:
 
-1. Go to [Glitch.com](https://glitch.com) and click "Sign Up" (it's free)
-2. After signing in, click "New Project" button at the top
-3. In the popup menu, select "Import from GitHub" 🔄
-4. Paste your repository URL and click "OK"
-5. Wait for the import to complete (1-2 minutes)
-6. Your app will be live at: `https://your-cyn-app.glitch.me`
+1. Go to [Railway.app](https://railway.app) and click "Start a New Project"
+2. Choose "Deploy from GitHub repo"
+3. Connect your GitHub account (if not already connected)
+4. Select your repository
+5. Click "Deploy Now"
+6. Wait for deployment (usually 2-3 minutes)
+7. Your app will be live at: `https://your-app.railway.app`
 
-### Setting Up 24/7 Uptime (Important!)
-
-To keep your app running 24/7 for free:
-
-1. Go to [UptimeRobot.com](https://uptimerobot.com) and create a free account
-2. Click "Add New Monitor"
-3. Select "HTTP(s)" as the monitor type
-4. Set your Glitch URL: `https://your-cyn-app.glitch.me/health`
-5. Set checking interval to 5 minutes
-6. Click "Create Monitor"
-
-That's it! Your app will now stay online 24/7! 🎉
+That's it! Your app will run 24/7 without any additional setup! 🎉
 
 ## Key Features
 

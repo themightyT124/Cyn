@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 const server = createServer(app);
 
-// Health Check endpoint for UptimeRobot
+// Health Check endpoint for Railway
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -80,7 +80,7 @@ const checkPortInUse = (port: number): Promise<boolean> => {
     });
   };
 
-  // Use port 5000 as the default to match .replit configuration
+  // Use PORT from environment or default to 5000
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
   console.log(`🚀 Starting server on port ${port}...`);
   startServer(port);
